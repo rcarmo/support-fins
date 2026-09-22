@@ -1396,6 +1396,25 @@ function setFinNote(lead, detail) {
   else { info.title = ''; info.hidden = true; }
 }
 
+function supportAuditText(built) {
+  if (!built || !lastResult) return '';
+  const total = lastResult.regions.length;
+  const unserved = Math.max(0, built.unserved ?? 0);
+  const served = Math.max(0, total - unserved);
+  const bits = [`Support audit: ${served}/${total} overhang region${total === 1 ? '' : 's'} served`];
+  if (unserved) bits.push(`${unserved} left uncovered in this orientation`);
+  if (built.skipped) {
+    const skipped = Object.entries(built.skipped)
+      .filter(([, n]) => n)
+      .map(([k, n]) => `${n} ${k}`);
+    if (skipped.length) bits.push(`skipped ${skipped.join(', ')}`);
+  }
+  if (removedIds.size) bits.push(`${removedIds.size} generated support${removedIds.size === 1 ? '' : 's'} removed by user`);
+  const added = activeAdded().length;
+  if (added) bits.push(`${added} support triangle${added === 1 ? '' : 's'} in current export`);
+  return `${bits.join('; ')}.`;
+}
+
 /**
  * Draw mode's readout. Reports the breakaway WALLS the user drew by hand (a wall
  * per line, straight onto the overhang), plus the pad/seating verdict from
@@ -1559,6 +1578,8 @@ function updateFinReadout(built, ms) {
             + `${b === 1 ? 'it' : 'them'} alone, so turn the hole upward to print `
             + `${b === 1 ? 'it' : 'them'} clean.`);
   }
+  const audit = supportAuditText(built);
+  if (audit) help.push(audit);
   setFinNote(lead, help);
   // ms is absent when a hand-drawn wall (Suggest + Draw mix) re-runs the readout
   // without rebuilding the auto fins -- don't touch the timing line then, and
