@@ -1,3 +1,4 @@
+import { test } from 'bun:test';
 // The "Tine grip" slider, and the regression it exists to make impossible.
 //
 // A day-plus was lost to commit c0fcf8e, which scaled tine spacing by a part's
@@ -19,7 +20,7 @@ const IDENTITY = [1, 0, 0, 0, 1, 0, 0, 0, 1];
 
 // --- 1. the knob itself ----------------------------------------------------
 
-Deno.test('tineStepFor: dense by default, sparse loosens, monotonic', () => {
+test('tineStepFor: dense by default, sparse loosens, monotonic', () => {
   assertClose(tineStepFor(1), PROP.tineStep, 1e-9, 'density 1 should be the dense comb');
   assertClose(tineStepFor(0), PROP.tineStepSparse, 1e-9, 'density 0 should be the sparse comb');
   assertClose(tineStepFor(undefined), PROP.tineStep, 1e-9, 'DEFAULT must be dense, not sparse');
@@ -40,14 +41,14 @@ function tinesAlongLine(step) {
   return n;
 }
 
-Deno.test('emitTines: a sparser step yields fewer tines on the same long wall', () => {
+test('emitTines: a sparser step yields fewer tines on the same long wall', () => {
   const dense = tinesAlongLine(tineStepFor(1));   // 2mm
   const sparse = tinesAlongLine(tineStepFor(0));  // 5mm
   assert(sparse < dense, `slider is inert on a long wall: dense ${dense} vs sparse ${sparse}`);
   assert(sparse >= 4, `sparse still has to be a comb, not a couple of nubs: ${sparse}`);
 });
 
-Deno.test('emitTines: the per-wall grip FLOOR survives the sparsest setting', () => {
+test('emitTines: the per-wall grip FLOOR survives the sparsest setting', () => {
   // A SHORT but fully-grippable wall at the sparsest spacing must still get
   // minGripTines -- the floor is what lets "sparse" thin marking without ever
   // letting a wall grip nothing. A tilted-ceiling block grips at every station.
@@ -87,7 +88,7 @@ function pctNN(caps, f) {
   return nn[Math.min(nn.length - 1, Math.floor(f * nn.length))];
 }
 
-Deno.test('buildFins: the slider moves tine count monotonically, dense > sparse', () => {
+test('buildFins: the slider moves tine count monotonically, dense > sparse', () => {
   const topo = tiltedBlockTopo(-40, 40, -45, 45, -6, 6, 55);   // broad tilted plate
   const res = analyze(topo, 60, IDENTITY);
   const dense = capTines(topo, res, IDENTITY, { tineDensity: 1 }).length;
@@ -97,7 +98,7 @@ Deno.test('buildFins: the slider moves tine count monotonically, dense > sparse'
   assert(dense >= mid && mid >= sparse, `not monotonic: dense ${dense} -> mid ${mid} -> sparse ${sparse}`);
 });
 
-Deno.test('buildFins: the DEFAULT (no tineDensity) is the dense comb, not sparse', () => {
+test('buildFins: the DEFAULT (no tineDensity) is the dense comb, not sparse', () => {
   const topo = tiltedBlockTopo(-40, 40, -45, 45, -6, 6, 55);
   const res = analyze(topo, 60, IDENTITY);
   const dflt = capTines(topo, res, IDENTITY, {}).length;          // omit tineDensity entirely
@@ -105,7 +106,7 @@ Deno.test('buildFins: the DEFAULT (no tineDensity) is the dense comb, not sparse
   assertClose(dflt, dense, 0, 'omitting the slider must equal the dense comb (default != sparse)');
 });
 
-Deno.test('REGRESSION c0fcf8e: a STABLE squat part still gets a dense comb by default', () => {
+test('REGRESSION c0fcf8e: a STABLE squat part still gets a dense comb by default', () => {
   // The exact class that regressed: a low, wide part (low tip-over risk) is where
   // the removed tip-risk scale handed out a sparse comb. At the default setting it
   // must still get a DENSE one -- grip is not conditional on a part being tippy.
@@ -126,7 +127,7 @@ Deno.test('REGRESSION c0fcf8e: a STABLE squat part still gets a dense comb by de
 // flat middle (the mid-face pockmarks Matthew caught). So a long wall's comb is
 // DENSE within tineEdgeBand of each end and THINNED (tineMidFactor) across the
 // middle. This pins the bias positively so it can't silently revert to uniform.
-Deno.test('emitTines: EDGE-BIASED -- a long wall is denser at its ends than its middle', () => {
+test('emitTines: EDGE-BIASED -- a long wall is denser at its ends than its middle', () => {
   const topo = tiltedBlockTopo(-15, 15, -25, 25, 0, 40, 40);   // ceiling rises with +Y: grippable end to end
   const line = [];
   for (let y = -20; y <= 20; y += 0.5) {

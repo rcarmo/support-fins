@@ -1,3 +1,4 @@
+import { test } from 'bun:test';
 // The bed pad must read as a clean OVAL, not the boxy grid of rectangles it was
 // before (Matthew's report). It also still has to conform -- dip under a tilted
 // part's flank -- and stay watertight. These pin all three so a revert to the grid
@@ -17,7 +18,7 @@ function padOf(name, rot) {
 // flank hangs over the footprint -- the exact case that used to force the ugly grid.
 const CUBE = padOf('cube', rotX(45));
 
-Deno.test('pad: the footprint is a smooth oval, not axis-aligned rectangles', () => {
+test('pad: the footprint is a smooth oval, not axis-aligned rectangles', () => {
   // A grid of axis-aligned boxes puts (almost) every edge along one of two
   // perpendicular directions, so folded mod 90deg they pile into a single bin. The
   // radial oval mesh spreads its edges across all directions. Bin every pad edge's
@@ -44,7 +45,7 @@ Deno.test('pad: the footprint is a smooth oval, not axis-aligned rectangles', ()
     `pad edges cluster on one direction (max bin ${(maxFrac * 100).toFixed(0)}%) -- looks boxy, not oval`);
 });
 
-Deno.test('pad: still conforms to the part (top dips under the flank, not a flat slab)', () => {
+test('pad: still conforms to the part (top dips under the flank, not a flat slab)', () => {
   let minTop = Infinity, maxTop = -Infinity;
   for (const v of CUBE.padTriangles) { if (v[2] < minTop) minTop = v[2]; if (v[2] > maxTop) maxTop = v[2]; }
   // A flat slab would have a single top height; a conforming pad ducks lower under
@@ -52,7 +53,7 @@ Deno.test('pad: still conforms to the part (top dips under the flank, not a flat
   assert(maxTop - minTop > 0.1, `pad top is flat (${minTop.toFixed(2)}..${maxTop.toFixed(2)}) -- not conforming`);
 });
 
-Deno.test('pad: watertight, and flagged as the oval mesh', () => {
+test('pad: watertight, and flagged as the oval mesh', () => {
   assert(isClosed(CUBE.padTriangles), 'pad geometry is not closed');
   assert(CUBE.pad && CUBE.pad.oval === true, 'pad is not the oval mesh (pad.oval !== true)');
 });
@@ -63,7 +64,7 @@ Deno.test('pad: watertight, and flagged as the oval mesh', () => {
 // negative grab still yields a valid, watertight, thinner-and-lower pad -- so the
 // floor in `conform` (which keeps every column positive) can't be dropped and the
 // gap path can't silently revert to a bite.
-Deno.test('pad: a negative grab (PETG) gives a thinner GAP pad, still watertight', () => {
+test('pad: a negative grab (PETG) gives a thinner GAP pad, still watertight', () => {
   const topo = loadModel('cube');
   const res = analyze(topo, 45, rotX(45));
   const build = () => fins.buildFins(topo, res, rotX(45), { mode: 'auto', bedPad: true, tines: true });

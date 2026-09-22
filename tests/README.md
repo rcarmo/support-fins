@@ -5,7 +5,7 @@ geometry in, triangle soup out -- so every test builds something and asserts a
 property no future change may quietly break.
 
 ```sh
-deno test --allow-read tests/
+bun test tests/
 ```
 
 ## What's pinned (and why it exists)

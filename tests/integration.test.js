@@ -1,3 +1,4 @@
+import { test } from 'bun:test';
 // END-TO-END on whole STLs: load a stress model, run the real buildFins pipeline,
 // and assert on the SUPPORT IT ACTUALLY PRODUCES -- counts and per-tine dimensions.
 //
@@ -41,7 +42,7 @@ function tineChunks(name, tilt) {
 const NEEDS_SUPPORT = [['ramp', 40], ['wedge', 40], ['staircase', 40], ['lbracket', 40]];
 
 for (const [name, tilt] of NEEDS_SUPPORT) {
-  Deno.test(`${name}@${tilt}: a part that needs support actually gets some (no silent zero)`, () => {
+  test(`${name}@${tilt}: a part that needs support actually gets some (no silent zero)`, () => {
     const { built } = build(name, tilt);
     const n = built.props ? built.props.length : (built.braceCount ?? 0);
     assert(n >= 1, `${name}@${tilt} produced NO support at all`);
@@ -49,7 +50,7 @@ for (const [name, tilt] of NEEDS_SUPPORT) {
   });
 }
 
-Deno.test('a grippable tilted part gets gripping tines, and the walls never fuse', () => {
+test('a grippable tilted part gets gripping tines, and the walls never fuse', () => {
   const { built } = build('ramp', 40);
   assert(built.tines >= 1, `ramp@40 got no tines (${built.tines}) -- combined support has no grip`);
   // walls-only: nothing but tines may be inside the part
@@ -58,7 +59,7 @@ Deno.test('a grippable tilted part gets gripping tines, and the walls never fuse
   assert(inside === 0, `${inside} wall verts are inside the STL (should clear by the gap)`);
 });
 
-Deno.test('every tine on a real part matches Slant’s spec: one layer tall, one bead wide', () => {
+test('every tine on a real part matches Slant’s spec: one layer tall, one bead wide', () => {
   const chunks = tineChunks('ramp', 40);
   assert(chunks.length >= 3, `expected several tines to measure, got ${chunks.length}`);
   // the tine footprint is a rectangle: (bite + overlap) long, tineW wide. Pin the

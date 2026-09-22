@@ -1,5 +1,6 @@
+import { readFileSync, writeFileSync } from 'node:fs';
 /** Instrument the patch grower: where do the upright faces actually go? */
-const WEB = '/Users/matthewtrahan/projects/support-fins/web';
+const WEB = new URL('../web/', import.meta.url).pathname;
 const { buildTopology, analyze } = await import(`${WEB}/overhangs.js`);
 const { findWallPatches, MAX_LEAN_DEG } = await import(`${WEB}/planes.js`);
 
@@ -14,12 +15,12 @@ function readBinarySTL(bytes) {
   return pos;
 }
 
-const path = Deno.args[0];
-const tilt = Number(Deno.args[1] ?? 0);
+const path = Bun.argv.slice(2)[0];
+const tilt = Number(Bun.argv.slice(2)[1] ?? 0);
 const a = (tilt * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a);
 const rot = [1, 0, 0, 0, c, s, 0, -s, c];
 
-const pos = readBinarySTL(Deno.readFileSync(path));
+const pos = readBinarySTL(readFileSync(path));
 const topo = buildTopology({ getAttribute: () => ({ array: pos }) });
 const res = analyze(topo, 45, rot);
 

@@ -1,4 +1,5 @@
-// Shared test helpers. No network deps -- a tiny local assert so `deno test
+import { readFileSync } from 'node:fs';
+// Shared test helpers. No network deps -- a tiny local assert so `bun test
 // --allow-read tests/` runs offline. The support engine is pure geometry, so
 // every test is: build some geometry, assert an invariant on the triangle soup.
 
@@ -31,7 +32,7 @@ export function readSTL(bytes) {
 }
 
 export function loadModel(name) {
-  const pos = readSTL(Deno.readFileSync(`${MODELS}${name}.stl`));
+  const pos = readSTL(readFileSync(`${MODELS}${name}.stl`));
   return buildTopology({ getAttribute: (k) => (k === 'position' ? { array: pos } : null) });
 }
 

@@ -1,3 +1,4 @@
+import { test } from 'bun:test';
 // Per-fin removal data model: every auto fin now carries its triangle segment(s)
 // (triRanges, vertex-indexed into built.triangles) so the UI can address and drop
 // an individual fin. These tests pin the invariants the click-to-remove feature
@@ -25,7 +26,7 @@ function finVerts(triangles, fin) {
   return out;
 }
 
-Deno.test('per-fin: every auto fin carries triRanges + id + kind + line', () => {
+test('per-fin: every auto fin carries triRanges + id + kind + line', () => {
   const b = build();
   assert(b.fins.length >= 2, `expected >=2 fins, got ${b.fins.length}`);
   for (const f of b.fins) {
@@ -36,7 +37,7 @@ Deno.test('per-fin: every auto fin carries triRanges + id + kind + line', () => 
   }
 });
 
-Deno.test('per-fin: triRanges are in-bounds, non-overlapping, and cover every triangle', () => {
+test('per-fin: triRanges are in-bounds, non-overlapping, and cover every triangle', () => {
   const b = build();
   const n = b.triangles.length;
   // vertex-indexed coverage: mark every vertex index claimed by some fin's range.
@@ -55,7 +56,7 @@ Deno.test('per-fin: triRanges are in-bounds, non-overlapping, and cover every tr
   assert(claimedCount === n, `triRanges cover ${claimedCount} of ${n} vertices -- gap in coverage`);
 });
 
-Deno.test('per-fin: each fin is itself a watertight closed solid', () => {
+test('per-fin: each fin is itself a watertight closed solid', () => {
   const b = build();
   for (const f of b.fins) {
     const verts = finVerts(b.triangles, f);
@@ -64,7 +65,7 @@ Deno.test('per-fin: each fin is itself a watertight closed solid', () => {
   }
 });
 
-Deno.test('per-fin: filtering out one fin excludes exactly its triangles and no others', () => {
+test('per-fin: filtering out one fin excludes exactly its triangles and no others', () => {
   const b = build();
   const n = b.triangles.length;
   // Pick a fin to "remove" (not the first, to avoid lucky-edge cases).

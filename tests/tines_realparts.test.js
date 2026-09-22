@@ -1,3 +1,4 @@
+import { test } from 'bun:test';
 // Tine grip on REAL parts through the WHOLE pipeline.
 //
 // The synthetic-block tine tests pin emitTines in isolation, but the bug that kept
@@ -25,7 +26,7 @@ const CASES = [
   ['arch', rotX(30)], ['tshape', rotX(40)], ['ushape', rotX(45)], ['bar', rotX(45)],
 ];
 
-Deno.test('tines on real parts: every tine bites INTO the nearest face, none lie flat or grip air', () => {
+test('tines on real parts: every tine bites INTO the nearest face, none lie flat or grip air', () => {
   let total = 0, noGrip = 0, flat = 0, checked = 0;
   const flatCases = new Set(), airCases = new Set(), sparseCases = [];
   for (const [name, rot] of CASES) {

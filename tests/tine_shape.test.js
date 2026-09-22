@@ -1,3 +1,4 @@
+import { test } from 'bun:test';
 // Tine SHAPE invariants: one layer tall, perfectly horizontal, and reachable on a
 // squat wall. Slant3D's whole argument (FIN-SPEC.md "Why the tines must be
 // horizontal") is that a tine has to be a single horizontal layer line so it
@@ -12,7 +13,7 @@ import { blockTopo, tiltedBlockTopo, prop, fins, insidePart, assert, assertClose
 const { emitTines, surfaceZAt, PROP } = prop;
 const LAYER = 0.2;   // Matthew's slicer layer height; a tine must equal exactly this
 
-Deno.test('tine height is exactly one slicer layer, in both tine builders', () => {
+test('tine height is exactly one slicer layer, in both tine builders', () => {
   assertClose(PROP.tineH, LAYER, 1e-9,
     `prop tine height ${PROP.tineH} != one layer (${LAYER}) -- would slice into >1 bead`);
   assertClose(fins.FIN.tineH, LAYER, 1e-9,
@@ -37,7 +38,7 @@ function tinesOnTiltedBlock(minTop) {
   return { out, n };
 }
 
-Deno.test('every tooth is exactly one layer tall and perfectly horizontal', () => {
+test('every tooth is exactly one layer tall and perfectly horizontal', () => {
   const { out, n } = tinesOnTiltedBlock();
   assert(n >= 3, `need tines to test their shape, got ${n}`);
   assert(out.length === n * 36, `expected 36 verts/tine, got ${out.length / n}`);
@@ -67,7 +68,7 @@ Deno.test('every tooth is exactly one layer tall and perfectly horizontal', () =
   }
 });
 
-Deno.test('tine height tracks the layer-height setting, not a hardcoded 0.2', () => {
+test('tine height tracks the layer-height setting, not a hardcoded 0.2', () => {
   // The UI's Layer height feeds emitTines a tineH so the tine is always exactly one
   // of the user's real layers (a mismatch tears instead of bending off). Pin that
   // the emitted tooth spans the passed height, at a non-default layer.
@@ -89,7 +90,7 @@ Deno.test('tine height tracks the layer-height setting, not a hardcoded 0.2', ()
   }
 });
 
-Deno.test('the tine SNAPS onto the layer grid (one cell), within half a layer of the underside, roots into the wall', () => {
+test('the tine SNAPS onto the layer grid (one cell), within half a layer of the underside, roots into the wall', () => {
   // Two bugs pinned here at once:
   //  1. The LAYER-STRADDLE bug (Matthew's cube): the tine top was pinned to the part
   //     underside, which is almost never on the layer grid, so a one-layer-tall tine
@@ -138,7 +139,7 @@ Deno.test('the tine SNAPS onto the layer grid (one cell), within half a layer of
   }
 });
 
-Deno.test('REGRESSION: an off-grid underside still yields one-layer tines (the cube 2-layer bug)', () => {
+test('REGRESSION: an off-grid underside still yields one-layer tines (the cube 2-layer bug)', () => {
   // The cube reproduction: tilt a block so its underside lands OFF the layer grid and
   // confirm every tine still occupies a single layer cell at the default (gap-height)
   // layer. Before the layer-snap, all of these straddled two layers.
@@ -170,7 +171,7 @@ Deno.test('REGRESSION: an off-grid underside still yields one-layer tines (the c
   assert(twoLayer === 0, `${twoLayer}/${n} tines still straddle two layers -- the snap regressed`);
 });
 
-Deno.test('a squat wall (low contact) carries tines only with the brim-height floor', () => {
+test('a squat wall (low contact) carries tines only with the brim-height floor', () => {
   // A grippable vertical face (the block's y=0 plane) with the contact line LOW --
   // wallTop ~0.6mm, under the flanged base floor (baseH+0.2) but above the brim.
   const topo = blockTopo(-20, 20, 0, 40, 0, 40);

@@ -1,3 +1,4 @@
+import { test } from 'bun:test';
 // Draw mode places a hand-drawn breakaway WALL under the line the user draws, and
 // (Matthew's ask) that wall grips the part with the same tine comb the auto fins
 // use when Tines is on. These pin: a drawn wall builds, it carries tines with the
@@ -38,13 +39,13 @@ function draw(tines) {
   return { topo, r };
 }
 
-Deno.test('draw: a wall builds under the drawn line on a tilted overhang', () => {
+test('draw: a wall builds under the drawn line on a tilted overhang', () => {
   const { r } = draw(false);
   assert(r.ok, `drawn wall failed: ${r.reason}`);
   assert(r.tris.length > 0, 'drawn wall produced no geometry');
 });
 
-Deno.test('draw: Tines ON grips the part, OFF is a plain breakaway wall', () => {
+test('draw: Tines ON grips the part, OFF is a plain breakaway wall', () => {
   const on = draw(true).r;
   const off = draw(false).r;
   assert(on.ok && off.ok, 'drawn wall failed to build');
@@ -52,12 +53,12 @@ Deno.test('draw: Tines ON grips the part, OFF is a plain breakaway wall', () => 
   assert(!off.tines, `Tines off still emitted tines (${off.tines})`);
 });
 
-Deno.test('draw: a tined wall is watertight', () => {
+test('draw: a tined wall is watertight', () => {
   const { r } = draw(true);
   assert(isClosed(r.tris), 'tined drawn-wall geometry is not closed');
 });
 
-Deno.test('draw: only the tines bite into the part, never the wall', () => {
+test('draw: only the tines bite into the part, never the wall', () => {
   const { topo, r: on } = draw(true);
   const off = draw(false).r;
   const inWith = insideCount(topo, IDENTITY, OFF, on.tris);

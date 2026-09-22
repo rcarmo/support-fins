@@ -1,3 +1,4 @@
+import { test } from 'bun:test';
 // End-to-end support invariants on the stress models, in poses that produce
 // fins. These lock the promises the tool makes about a printed part:
 //   - the fin WALL never fuses into the STL (it stands off by the breakaway gap);
@@ -22,20 +23,20 @@ function build(name, rot, opts = {}) {
 }
 
 for (const [name, pose, rot] of CASES) {
-  Deno.test(`${name}/${pose}: the fin wall never fuses into the STL`, () => {
+  test(`${name}/${pose}: the fin wall never fuses into the STL`, () => {
     const { topo, res, built } = build(name, rot, { tines: false }); // walls only, no grip teeth
     const inside = insideCount(topo, rot, res.offset, built.triangles);
     // Only the tines are allowed to bite in; the wall itself must clear the part.
     assert(inside === 0, `${inside} wall verts are inside the STL (the wall should stand off by the gap)`);
   });
 
-  Deno.test(`${name}/${pose}: added support is watertight`, () => {
+  test(`${name}/${pose}: added support is watertight`, () => {
     const { built } = build(name, rot);
     assert(isClosed(built.triangles), 'fin geometry is not closed');
     assert(isClosed(built.padTriangles), 'pad geometry is not closed');
   });
 
-  Deno.test(`${name}/${pose}: a tilted part gets a tined, gripping fin`, () => {
+  test(`${name}/${pose}: a tilted part gets a tined, gripping fin`, () => {
     const { topo, res, built } = build(name, rot);
     assert(built.braceCount >= 1, `no fins placed (braceCount ${built.braceCount})`);
     assert(built.tines >= 1, `fin has no grip tines (${built.tines})`);
@@ -47,7 +48,7 @@ for (const [name, pose, rot] of CASES) {
   });
 }
 
-Deno.test('point-seated tilt: fin feet fuse into the bed pad, not lifted off it', () => {
+test('point-seated tilt: fin feet fuse into the bed pad, not lifted off it', () => {
   // A cube on its edge touches the bed on ~nothing, so it gets a pad; the fins
   // must run down and weld to that pad. The pad-trim regression pulled them up.
   const { topo, res, built } = build('cube', rotX(45));

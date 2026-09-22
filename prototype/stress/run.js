@@ -1,10 +1,11 @@
+import { readFileSync, readdirSync } from 'node:fs';
 /**
  * Stress the combined-support engine across a pool of shapes x orientations.
  * For each case: run buildFins('auto', tines) and report what it placed, whether
  * the added geometry is closed, and flag the pathologies (spray, spindly stilt,
  * missed support, unsupportable point-seat, crash).
  *
- *   deno run --allow-read prototype/stress/run.js [--verbose]
+ *   bun prototype/stress/run.js [--verbose]
  */
 const WEB = '/Users/matthewtrahan/projects/support-fins/web';
 const { buildTopology, analyze } = await import(`${WEB}/overhangs.js`);
@@ -65,13 +66,13 @@ function volMM3(tris) {
 }
 
 const dir = `${WEB.replace('/web', '')}/prototype/stress/models`;
-const files = [...Deno.readDirSync(dir)].filter((f) => f.name.endsWith('.stl')).map((f) => f.name).sort();
-const verbose = Deno.args.includes('--verbose');
+const files = readdirSync(dir, { withFileTypes: true }).filter((f) => f.name.endsWith('.stl')).map((f) => f.name).sort();
+const verbose = Bun.argv.slice(2).includes('--verbose');
 
 const rows = [];
 for (const file of files) {
   const name = file.replace('.stl', '');
-  const pos = readSTL(Deno.readFileSync(`${dir}/${file}`));
+  const pos = readSTL(readFileSync(`${dir}/${file}`));
   const geometry = { getAttribute: (k) => (k === 'position' ? { array: pos } : null) };
   const topo = buildTopology(geometry);
   for (const [oname, rot] of ORIENTS) {

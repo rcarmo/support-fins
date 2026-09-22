@@ -1,3 +1,4 @@
+import { readFileSync, writeFileSync } from 'node:fs';
 // Why the straightness gate is RMS-deviation/chord and not arc-length/chord.
 // Arc length grows without bound as you sample a curve more finely, so the old
 // `tortuosity` measured the SAMPLING; this shows both, side by side, over the
@@ -29,8 +30,8 @@ function straightness(line){
   const rms=Math.sqrt(ss/n);
   return {rms, ratio: rms/Math.max(1e-9,hi-lo)};
 }
-const path=Deno.args[0],tilt=Number(Deno.args[1]);
-const pos=readBinarySTL(Deno.readFileSync(path));
+const path=Bun.argv.slice(2)[0],tilt=Number(Bun.argv.slice(2)[1]);
+const pos=readBinarySTL(readFileSync(path));
 const topo=buildTopology({getAttribute:()=>({array:pos})});
 const rot=rotX(tilt),res=analyze(topo,45,rot),off=res.offset;
 const v=[0,0,0];const seat=(i)=>{const x=pos[i],y=pos[i+1],z=pos[i+2];

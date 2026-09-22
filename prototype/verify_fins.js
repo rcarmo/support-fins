@@ -1,11 +1,12 @@
+import { readFileSync, writeFileSync } from 'node:fs';
 /**
  * Headless check of the M4 fin pipeline. Runs the SAME modules the browser runs
  * -- overhangs.js, planes.js, fins.js are all plain mesh math with no three.js
  * import -- so what this validates is the shipping code, not a reimplementation.
  *
- *   deno run --allow-read --allow-write verify_fins.js <model.stl> [tiltDeg]
+ *   bun verify_fins.js <model.stl> [tiltDeg]
  */
-const WEB = '/Users/matthewtrahan/projects/support-fins/web';
+const WEB = new URL('../web/', import.meta.url).pathname;
 const { buildTopology, analyze } = await import(`${WEB}/overhangs.js`);
 const { buildFins } = await import(`${WEB}/fins.js`);
 const { findWallPatches } = await import(`${WEB}/planes.js`);
@@ -48,10 +49,10 @@ function rotX(deg) {
   return [1, 0, 0, 0, c, s, 0, -s, c];
 }
 
-const path = Deno.args[0];
-const tilt = Number(Deno.args[1] ?? 30);
-const mode = Deno.args[3] ?? 'stabilize';
-const pos = readBinarySTL(Deno.readFileSync(path));
+const path = Bun.argv.slice(2)[0];
+const tilt = Number(Bun.argv.slice(2)[1] ?? 30);
+const mode = Bun.argv.slice(2)[3] ?? 'stabilize';
+const pos = readBinarySTL(readFileSync(path));
 
 // the browser hands buildTopology a three.js BufferGeometry; it only ever reads
 // the position array, so a two-line shim exercises the real code path
@@ -127,8 +128,8 @@ const partTris = tris.length;
 for (const t of built.triangles) tris.push(t);
 for (const t of built.padTriangles) tris.push(t);
 
-const out = Deno.args[2] ?? '/tmp/sf-check.stl';
-Deno.writeFileSync(out, writeBinarySTL(tris));
+const out = Bun.argv.slice(2)[2] ?? '/tmp/sf-check.stl';
+writeFileSync(out, writeBinarySTL(tris));
 console.log(`  wrote ${out}  (${partTris / 3} part tris + ` +
             `${(tris.length - partTris) / 3} added)`);
 
@@ -137,12 +138,12 @@ console.log(`  wrote ${out}  (${partTris / 3} part tris + ` +
 // of a multi-body part: hub_corner.stl is two solids, and a prop correctly
 // serving the smaller one was measured against the larger and reported a 13mm
 // breakaway gap that did not exist.
-Deno.writeFileSync(out.replace('.stl', '-part.stl'),
+writeFileSync(out.replace('.stl', '-part.stl'),
                    writeBinarySTL(tris.slice(0, partTris)));
 
 // fins and pad SEPARATELY. The pad is meant to fuse to the part -- lumping it in
 // with the fins makes every pad look like a fin welded on by mistake.
-Deno.writeFileSync(out.replace('.stl', '-fins.stl'), writeBinarySTL(built.triangles));
+writeFileSync(out.replace('.stl', '-fins.stl'), writeBinarySTL(built.triangles));
 if (built.padTriangles.length) {
-  Deno.writeFileSync(out.replace('.stl', '-pad.stl'), writeBinarySTL(built.padTriangles));
+  writeFileSync(out.replace('.stl', '-pad.stl'), writeBinarySTL(built.padTriangles));
 }

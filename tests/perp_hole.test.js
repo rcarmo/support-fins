@@ -1,3 +1,4 @@
+import { test } from 'bun:test';
 // Hole-aware wedge placement: a bore in a face must NOT get a fin dropped through
 // it (the angle-bracket case -- a tilted bore prints poorly and finning it scars
 // the bore). Instead the standable u's split into BANDS on either side of the
@@ -31,14 +32,14 @@ function boredPatch() {
   return patch(t, -30, 30, 40);
 }
 
-Deno.test('perpColumns: a clean face gives one even row (no regression)', () => {
+test('perpColumns: a clean face gives one even row (no regression)', () => {
   const cols = fins.perpColumns(solidPatch(), -28, 28, 24);
   assert(cols.length >= 1, `no columns on a clean face: ${cols.length}`);
   // every column sits within the face, none excluded
   for (const u of cols) assert(u >= -28 - 1e-6 && u <= 28 + 1e-6, `column off the face: ${u}`);
 });
 
-Deno.test('perpColumns: a bore splits the row into two fins FLANKING it', () => {
+test('perpColumns: a bore splits the row into two fins FLANKING it', () => {
   const cols = fins.perpColumns(boredPatch(), -28, 28, 24);
   assert(cols.length >= 2, `bore should yield >=2 flanking columns, got ${cols.length}: ${cols}`);
   // THE FIX: no column lands inside the bore's u-band (|u| < 8) -- that column
@@ -49,7 +50,7 @@ Deno.test('perpColumns: a bore splits the row into two fins FLANKING it', () => 
   assert(cols.some((u) => u <= -8) && cols.some((u) => u >= 8), `not flanked on both sides: ${cols}`);
 });
 
-Deno.test('END-TO-END: a tilted plate with a bore gets flanking fins, none through the bore', () => {
+test('END-TO-END: a tilted plate with a bore gets flanking fins, none through the bore', () => {
   // The whole pipeline (analyze -> findWallPatches -> buildPerpFins), not just the
   // column picker: a broad plate with a central bore, tilted 45deg. The old code
   // dropped one fin column straight through the bore; the fix flanks it.

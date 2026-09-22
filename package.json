@@ -1,0 +1,11 @@
+{
+  "name": "support-fins",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test tests/",
+    "test:fins": "bun test tests/fins.test.js",
+    "stress": "bun prototype/stress/run.js"
+  },
+  "devDependencies": {}
+}

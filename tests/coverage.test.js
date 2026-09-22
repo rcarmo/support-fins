@@ -1,3 +1,4 @@
+import { test } from 'bun:test';
 // The "Wide-face coverage" slider must actually change how densely a broad
 // overhang is lined. It was wired to a dead code path once, so Auto ignored it
 // entirely -- coverage 0 and 1 gave byte-identical output. These pin that the
@@ -22,13 +23,13 @@ function finCount(coverage) {
   return b.fins.length;
 }
 
-Deno.test('coverage: dense places strictly more fins than sparse', () => {
+test('coverage: dense places strictly more fins than sparse', () => {
   const sparse = finCount(0);
   const dense = finCount(1);
   assert(dense > sparse, `slider is inert: coverage 0 -> ${sparse} fins, coverage 1 -> ${dense}`);
 });
 
-Deno.test('coverage: density is monotonic and never drops below sparse', () => {
+test('coverage: density is monotonic and never drops below sparse', () => {
   const c0 = finCount(0), c05 = finCount(0.5), c1 = finCount(1);
   assert(c05 >= c0 && c1 >= c05, `not monotonic: ${c0} -> ${c05} -> ${c1}`);
 });
@@ -38,7 +39,7 @@ function sagRiskAt(coverage) {
   return fins.buildFins(topo, res, IDENTITY, { mode: 'auto', bedPad: true, tines: true, coverage }).sagRisk;
 }
 
-Deno.test('coverage: the neutral default never cries sag on a wide plate', () => {
+test('coverage: the neutral default never cries sag on a wide plate', () => {
   // Regression: round(vExt/cap) lands a hair over the cap even at coverage 0.5, so
   // an achieved-spacing test warned on the DEFAULT. The warning must fire only when
   // the user actually dragged BELOW centre, not from rounding at the neutral pitch.
@@ -46,6 +47,6 @@ Deno.test('coverage: the neutral default never cries sag on a wide plate', () =>
   assert(!sagRiskAt(1), 'sag warning fired at the densest setting');
 });
 
-Deno.test('coverage: dragging below centre DOES warn on a wide multi-row plate', () => {
+test('coverage: dragging below centre DOES warn on a wide multi-row plate', () => {
   assert(sagRiskAt(0) === true, 'no sag warning at the sparsest setting on a wide plate');
 });

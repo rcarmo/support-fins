@@ -1,3 +1,4 @@
+import { test } from 'bun:test';
 // Squat bed props: near-bed overhangs too low for a flanged breakaway wall.
 //
 // A full T-wall needs ~minHeight of headroom just to exist (gap + base flange +
@@ -19,13 +20,13 @@ function build(opts = {}) {
   return { topo, res, built };
 }
 
-Deno.test('lowledge: the near-bed overhang gets a squat prop it did not before', () => {
+test('lowledge: the near-bed overhang gets a squat prop it did not before', () => {
   const { built } = build();
   const squat = built.props.filter((p) => p.squat);
   assert(squat.length >= 1, `no squat props placed (props ${built.props.length})`);
 });
 
-Deno.test('lowledge: a squat prop stays squat -- between the squat floor and minHeight', () => {
+test('lowledge: a squat prop stays squat -- between the squat floor and minHeight', () => {
   const { built } = build();
   for (const p of built.props.filter((q) => q.squat)) {
     assert(p.height >= prop.PROP.minHeightSquat - 1e-6 && p.height < prop.PROP.minHeight,
@@ -33,12 +34,12 @@ Deno.test('lowledge: a squat prop stays squat -- between the squat floor and min
   }
 });
 
-Deno.test('lowledge: squat support is watertight', () => {
+test('lowledge: squat support is watertight', () => {
   const { built } = build();
   assert(isClosed(built.triangles), 'squat support geometry is not closed');
 });
 
-Deno.test('lowledge: a squat wall stands on a brim wider than the wall, for plate grip', () => {
+test('lowledge: a squat wall stands on a brim wider than the wall, for plate grip', () => {
   const { built } = build({ tines: false }); // walls + brims, no tines
   // Effective plate-contact width = (plate-contact area) / (total wall length).
   // A brimmed wall gives ~2*squatBrimW; a bare tip contact would give only `tip`
@@ -56,13 +57,13 @@ Deno.test('lowledge: a squat wall stands on a brim wider than the wall, for plat
     `brim only ${width.toFixed(2)}mm wide (tip is ${prop.PROP.tip}, wall th ${prop.PROP.th}) -- would peel`);
 });
 
-Deno.test('lowledge: the squat WALL never fuses into the part', () => {
+test('lowledge: the squat WALL never fuses into the part', () => {
   const { topo, res, built } = build({ tines: false }); // walls only; only tines may bite
   const inside = insideCount(topo, FLAT, res.offset, built.triangles);
   assert(inside === 0, `${inside} squat-wall verts are inside the STL (it should clear the part by the gap)`);
 });
 
-Deno.test('lowledge: the end-to-end fins path surfaces the squat wall too', () => {
+test('lowledge: the end-to-end fins path surfaces the squat wall too', () => {
   const topo = loadModel('lowledge');
   const res = analyze(topo, 45, FLAT);
   const built = fins.buildFins(topo, res, FLAT, { mode: 'auto', bedPad: true, tines: true });

@@ -1,3 +1,4 @@
+import { test } from 'bun:test';
 // Tine geometry invariants -- the ones this session kept regressing.
 //
 // docs/FIN-SPEC.md: a tine is a tiny HORIZONTAL bridge that fuses INTO the part.
@@ -30,13 +31,13 @@ function tinesOnBlock() {
   return { topo, rot, offset, out, n, box: bbox(out) };
 }
 
-Deno.test('emitTines: a grippable overhang yields tines', () => {
+test('emitTines: a grippable overhang yields tines', () => {
   const { n, out } = tinesOnBlock();
   assert(n >= 1, `expected tines, got ${n}`);
   assert(out.length === n * 36, `expected 36 verts/tine, got ${out.length} for ${n}`);
 });
 
-Deno.test('emitTines: teeth are one nozzle bead wide, centred on the wall', () => {
+test('emitTines: teeth are one nozzle bead wide, centred on the wall', () => {
   const { box } = tinesOnBlock();
   // X is the width-across-the-run axis = the bead the nozzle lays. Slant3D's spec
   // is 0.4-0.8mm (one nozzle pass to out-and-back), NOT the wall thickness -- a
@@ -51,7 +52,7 @@ Deno.test('emitTines: teeth are one nozzle bead wide, centred on the wall', () =
   assert(box.hi[1] > 1.0, `tine barely reaches into the part (max y ${box.hi[1].toFixed(2)})`);
 });
 
-Deno.test('emitTines: teeth are horizontal one-layer bridges, not tall towers', () => {
+test('emitTines: teeth are horizontal one-layer bridges, not tall towers', () => {
   const { box } = tinesOnBlock();
   const zExtent = box.hi[2] - box.lo[2];
   // Exactly one layer (PROP.tineH) -- a single continuous bead. A dropped tooth
@@ -59,7 +60,7 @@ Deno.test('emitTines: teeth are horizontal one-layer bridges, not tall towers', 
   assertClose(zExtent, prop.PROP.tineH, 1e-6, `tine is not one layer: z-extent ${zExtent.toFixed(2)}mm`);
 });
 
-Deno.test('emitTines: most tooth volume actually lands inside the part', () => {
+test('emitTines: most tooth volume actually lands inside the part', () => {
   const { out, topo, rot, offset } = tinesOnBlock();
   let inside = 0;
   for (const v of out) if (insidePart(topo, rot, offset, v[0], v[1], v[2])) inside++;
@@ -68,7 +69,7 @@ Deno.test('emitTines: most tooth volume actually lands inside the part', () => {
   assert(inside / out.length >= 0.4, `tines grip weakly: only ${(inside / out.length * 100 | 0)}% of verts inside the part`);
 });
 
-Deno.test('emitTines: on a wall along the level CONTOUR, teeth still bite INTO the face', () => {
+test('emitTines: on a wall along the level CONTOUR, teeth still bite INTO the face', () => {
   // THE REGRESSION THIS PINS. A leaning face is often supported by a wall running
   // along its level contour (constant height), so the wall's RUN is TANGENT to the
   // surface. The old code took the bite direction from the run and probed +-run
@@ -99,7 +100,7 @@ Deno.test('emitTines: on a wall along the level CONTOUR, teeth still bite INTO t
   assert((box.hi[1] - box.lo[1]) > 0.6, `contour tines don't reach into the face (Y-extent ${(box.hi[1] - box.lo[1]).toFixed(2)})`);
 });
 
-Deno.test('emitTines: an overhang the tooth cannot reach into gets no tine (honest)', () => {
+test('emitTines: an overhang the tooth cannot reach into gets no tine (honest)', () => {
   // Same line, but the block is pulled far in +Y so no horizontal bite reaches
   // it. emitTines must emit nothing rather than a tooth gripping air.
   const topo = blockTopo(-20, 20, 50, 90, 0, 40);
