@@ -37,6 +37,7 @@ const rot = rotX(tilt);
 const t0 = performance.now();
 const result = analyze(topo, 45, rot);
 const t1 = performance.now();
+const profile = {};
 const built = buildFins(topo, result, rot, {
   mode,
   bedPad: true,
@@ -44,11 +45,15 @@ const built = buildFins(topo, result, rot, {
   tineDensity: 0,
   coverage: 0.5,
   layerHeight: 0.2,
+  profile,
 });
 const t2 = performance.now();
 
 const supportTris = built.triangles?.length ?? 0;
 const padTris = built.padTriangles?.length ?? 0;
+const phaseMs = Object.fromEntries(Object.entries(profile)
+  .sort((a, b) => b[1].ms - a[1].ms)
+  .map(([name, row]) => [name, { calls: row.calls, ms: Number(row.ms.toFixed(3)) }]));
 console.log(JSON.stringify({
   model: path,
   tilt,
@@ -66,4 +71,5 @@ console.log(JSON.stringify({
   skipped: built.skipped ?? {},
   supportTriangles: supportTris,
   padTriangles: padTris,
+  phaseMs,
 }, null, 2));

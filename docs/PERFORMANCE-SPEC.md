@@ -155,6 +155,7 @@ bun run profile prototype/stress/models/lbracket.stl 40 auto
 ```
 
 It prints JSON with topology size, overhang counts, analyze/build timing, support counts,
-tines, skipped reasons, and triangle counts. Treat it as a first attribution pass only;
+tines, skipped reasons, triangle counts, and `phaseMs` function/phase timings from the
+opt-in `buildFins(..., { profile })` hook. Treat it as a first attribution pass only;
 for inner-loop optimization, add narrower instrumentation around the suspected function and
 keep `bun test tests/` green.

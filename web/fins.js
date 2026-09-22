@@ -117,6 +117,21 @@ function coverPitch(coverage) {
     : FIN.coverSparse - ((c - 0.5) / 0.5) * (FIN.coverSparse - FIN.coverDense);
 }
 
+function profileAdd(profile, name, ms) {
+  if (!profile) return;
+  const row = profile[name] ?? { calls: 0, ms: 0 };
+  row.calls++;
+  row.ms += ms;
+  profile[name] = row;
+}
+
+function profileTime(profile, name, fn) {
+  if (!profile) return fn();
+  const t0 = performance.now();
+  try { return fn(); }
+  finally { profileAdd(profile, name, performance.now() - t0); }
+}
+
 /**
  * Extrude a closed convex polygon into a prism.
  *
@@ -1237,6 +1252,12 @@ function propServesPatch(p, props) {
  */
 export function buildFins(topo, result, rot, opts = {}) {
   const mode = opts.mode ?? 'prop';
+  const profile = opts.profile ?? null;
+  const totalT0 = profile ? performance.now() : 0;
+  const finish = (value) => {
+    profileAdd(profile, `buildFins.${mode}.total`, performance.now() - totalT0);
+    return value;
+  };
   const maxFins = opts.maxFins ?? FIN.maxFins;
   const out = [];
   const padOut = [];
@@ -1267,7 +1288,8 @@ export function buildFins(topo, result, rot, opts = {}) {
     // tests/coverage.test.js.
     const coverage = Math.max(0, Math.min(1, opts.coverage ?? FIN.coverDefault));
     const covPitch = coverPitch(coverage);
-    const base = buildFins(topo, result, rot, { ...opts, mode: 'prop', tines: withTines });
+    const base = profileTime(profile, 'buildFins.auto.baseProp', () =>
+      buildFins(topo, result, rot, { ...opts, mode: 'prop', tines: withTines }));
 
     // Add ANGLED WEDGES on grippable down-facing patches that NO prop wall
     // reached -- the wide/long leaning face where a vertical wall is blocked by
@@ -1275,7 +1297,8 @@ export function buildFins(topo, result, rot, opts = {}) {
     // patch's footprint), not by face-index, because a wall-patch and an overhang
     // region grow from different seeds and don't share a face set. Patches props
     // already serve are left untouched, so the reachable parts don't change.
-    const patches = findWallPatches(topo, rot, result.offset);
+    const patches = profileTime(profile, 'buildFins.auto.findWallPatches', () =>
+      findWallPatches(topo, rot, result.offset));
     const wedgeTris = [];
     const wedgeRecs = [];   // per-wedge records, triRange into wedgeTris (pre-offset)
     let wedgeTines = 0, wedgedPatches = 0;
@@ -1283,7 +1306,8 @@ export function buildFins(topo, result, rot, opts = {}) {
       if (p.n.z >= -0.05) continue;                 // downward faces only
       if (p.area < PERP.minArea || (p.u1 - p.u0) < PERP.minWidth) continue; // broad faces only
       if (propServesPatch(p, base.props)) continue; // a prop already stands under it
-      const w = buildPerpFins(p, topo, rot, result.offset, { tines: withTines, pitch: covPitch, tineDensity: opts.tineDensity });
+      const w = profileTime(profile, 'buildFins.auto.buildPerpFins', () =>
+        buildPerpFins(p, topo, rot, result.offset, { tines: withTines, pitch: covPitch, tineDensity: opts.tineDensity }));
       if (!w.count) continue;
       // Offset each wedge's range from its per-call `out` into the merged
       // wedgeTris array, so the range lands correctly in the final triangles.
@@ -1319,7 +1343,7 @@ export function buildFins(topo, result, rot, opts = {}) {
         line: wd.line, span: wd.span,
       });
     }
-    return {
+    return finish({
       ...base, mode,
       triangles: [...base.triangles, ...wedgeTris],
       fins,
@@ -1329,17 +1353,18 @@ export function buildFins(topo, result, rot, opts = {}) {
       braceCount: withTines ? fins.length : wedgeCount,
       propCount: withTines ? 0 : base.fins.length,
       unserved: Math.max(0, (base.unserved ?? 0) - wedgedPatches),
-    };
+    });
   }
 
   // Prop is its own support, built by its own module -- a wall UNDER each
   // overhang with no tines, which needs none of the face-finding below. Handled
   // first so the patch search is not even run for it.
   if (mode === 'prop') {
-    const contact = bedContact(topo, result, rot);
+    const contact = profileTime(profile, 'buildFins.prop.bedContact', () => bedContact(topo, result, rot));
     const seating = seatingOf(result, contact.pts);
     const pad = (opts.bedPad ?? true) && result.bedArea < FIN.padMinArea
-      ? buildPad(contact.pts, seatedPartTris(topo, rot, result.offset), padOut) : null;
+      ? profileTime(profile, 'buildFins.prop.buildPad', () =>
+        buildPad(contact.pts, seatedPartTris(topo, rot, result.offset), padOut)) : null;
     // A part seated on a POINT gets no props -- nothing standing on the plate
     // can hold a part that never touches it -- UNLESS the bed pad is on, in
     // which case the pad is what seats it and the walls have something to work
@@ -1352,8 +1377,8 @@ export function buildFins(topo, result, rot, opts = {}) {
     // advice the printed evidence contradicts. Refuse only when the user has
     // turned the pad off.
     const built = seating.kind === 'point' && !pad
-      ? noProps() : buildProps(topo, result, rot, opts);
-    return {
+      ? noProps() : profileTime(profile, 'buildFins.prop.buildProps', () => buildProps(topo, result, rot, opts));
+    return finish({
       triangles: built.triangles, padTriangles: padOut, pad, mode,
       // Carry each prop's triangle range + identity up so per-fin removal can
       // address an individual fin regardless of which mode produced it. The stats
@@ -1387,14 +1412,16 @@ export function buildFins(topo, result, rot, opts = {}) {
       sagRisk: built.sagRisk ?? false,
       seating,
       tip: null,
-    };
+    });
   }
 
   const patchStats = {};
-  const patches = findWallPatches(topo, rot, result.offset, patchStats);
+  const patches = profileTime(profile, 'buildFins.stabilize.findWallPatches', () =>
+    findWallPatches(topo, rot, result.offset, patchStats));
 
   // where the part's mass is, versus where it is actually touching down
-  const { pts: contact, mx, my } = bedContact(topo, result, rot);
+  const { pts: contact, mx, my } = profileTime(profile, 'buildFins.stabilize.bedContact', () =>
+    bedContact(topo, result, rot));
 
   let tip = null;
   if (contact.length) {
@@ -1414,7 +1441,7 @@ export function buildFins(topo, result, rot, opts = {}) {
   // stops standalone Combined-fin from spraying braces on a flat, seated part.
   const needsHolding = tip !== null || result.bedArea < FIN.padMinArea;
   const ranked = mode === 'stabilize' && needsHolding
-    ? rankSites(patches, tip, patchStats) : [];
+    ? profileTime(profile, 'buildFins.stabilize.rankSites', () => rankSites(patches, tip, patchStats)) : [];
 
   // Walk the ranking until enough fins EXIST, rather than picking sites up front
   // and hoping. Choosing first and building second meant a site that turned out
@@ -1452,8 +1479,9 @@ export function buildFins(topo, result, rot, opts = {}) {
       let placed = 0;
       for (const span of rowSpans) {
         if (fins.length >= FIN.rowMaxTotal) break;
-        const info = buildFin(cand.patch, out, span, topo, rot, result.offset,
-                              { tines: opts.tines });
+        const info = profileTime(profile, 'buildFins.stabilize.buildFin', () =>
+          buildFin(cand.patch, out, span, topo, rot, result.offset,
+                   { tines: opts.tines }));
         if (info) { fins.push(info); placed++; }
       }
       if (placed) taken.push(cand.patch); else rejected.tooFewTines++;
@@ -1462,8 +1490,9 @@ export function buildFins(topo, result, rot, opts = {}) {
       if (!spans.length) { rejected.blocked++; continue; }
       let info = null;
       for (const span of spans) {
-        info = buildFin(cand.patch, out, span, topo, rot, result.offset,
-                        { tines: opts.tines });
+        info = profileTime(profile, 'buildFins.stabilize.buildFin', () =>
+          buildFin(cand.patch, out, span, topo, rot, result.offset,
+                   { tines: opts.tines }));
         if (info) break;
       }
       if (info) { fins.push(info); taken.push(cand.patch); compactCount++; }
@@ -1474,10 +1503,11 @@ export function buildFins(topo, result, rot, opts = {}) {
 
   let pad = null;
   if ((opts.bedPad ?? true) && result.bedArea < FIN.padMinArea) {
-    pad = buildPad(contact, seatedPartTris(topo, rot, result.offset), padOut);
+    pad = profileTime(profile, 'buildFins.stabilize.buildPad', () =>
+      buildPad(contact, seatedPartTris(topo, rot, result.offset), padOut));
   }
 
-  return {
+  return finish({
     triangles: out, padTriangles: padOut, fins, pad, rejected,
     patchCount: patches.length, patchStats,
     tines: fins.reduce((a, f) => a + f.tines, 0),
@@ -1487,5 +1517,5 @@ export function buildFins(topo, result, rot, opts = {}) {
     unserved: result.regions.length,
     seating: seatingOf(result, contact),
     tip,
-  };
+  });
 }
