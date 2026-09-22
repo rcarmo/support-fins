@@ -153,3 +153,13 @@ Fins are entirely yours, and the output carries no license obligation.
 
 Free and open source. If it ever saves you a print, you can [buy me a coffee on
 Ko-fi](https://ko-fi.com/matthewtrahan) ☕.
+
+Browser smoke test (local, optional):
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/workspace/bin/pw-browsers bun run smoke:browser
+```
+
+This starts a local static server, opens the app in Chromium, loads the checked-in
+`lowledge.stl` fixture, enables fins, and verifies part/support STL and 3MF export
+handlers produce non-empty Blobs.

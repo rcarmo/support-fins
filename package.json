@@ -6,7 +6,10 @@
     "test": "bun test tests/",
     "test:fins": "bun test tests/fins.test.js",
     "stress": "bun prototype/stress/run.js",
-    "profile": "bun scripts/profile-build.js"
+    "profile": "bun scripts/profile-build.js",
+    "smoke:browser": "PLAYWRIGHT_BROWSERS_PATH=${PLAYWRIGHT_BROWSERS_PATH:-/workspace/bin/pw-browsers} bun scripts/smoke-browser.js"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "playwright": "^1.56.0"
+  }
 }
