@@ -29,7 +29,7 @@
 <header id="topbar">
   <span class="brand"><img src="favicon.svg" alt="" class="brand-mark">Support&nbsp;Fins</span>
   <label class="btn primary">
-    Open STL<input type="file" id="file" accept=".stl" hidden>
+    Open STL / 3MF<input type="file" id="file" accept=".stl,.3mf" hidden>
   </label>
   <label class="field">
     Build volume
@@ -265,6 +265,7 @@
      fins are on. The how-it-works / how-to-fix detail lives behind the (i) on the
      Fins stat instead of stacking up here. -->
 <aside id="status" hidden>
+  <p class="note" id="s-import-note"></p>
   <p class="note" id="s-flat-note"></p>
   <p class="note" id="s-fin-note"></p>
   <p class="over-warn" id="over-warn"></p>
@@ -286,7 +287,7 @@
       breakaway supports right into the STL. It prints the same on any machine, in any
       slicer, with supports turned off.</p>
     <ol class="steps">
-      <li><strong>Open an STL.</strong> Drop it anywhere on this page.</li>
+      <li><strong>Open an STL or 3MF.</strong> Drop it anywhere on this page.</li>
       <li><strong>Rotate it.</strong> Red marks every surface that needs support.</li>
       <li><strong>Export.</strong> Fins come baked in — no slicer supports needed.</li>
     </ol>

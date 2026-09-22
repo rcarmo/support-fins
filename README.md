@@ -24,7 +24,7 @@ now you had to CAD it by hand every time.
 
 ## How it works
 
-1. Load an STL.
+1. Load an STL or 3MF.
 2. Rotate it. You're in control — Support Fins suggests, it never decides for you.
 3. It shows you live: overhang count, how many can take a real fin, height, bed contact.
    Point at the load direction, answer one question — *does it pull apart, or does it
@@ -44,7 +44,7 @@ engine is validated against third-party STLs and pinned by an offline test suite
 
 Working: overhang detection, bed-reachability, contoured breakaway fin walls, orientation +
 load-direction scoring, the combined fin (wall + tines that fuse into the part — the whole
-point; see `docs/FIN-SPEC.md`), STL and 3MF export.
+point; see `docs/FIN-SPEC.md`), STL and 3MF import, STL and 3MF export.
 
 Still open: scale-aware fin profiles, and the bed pad on tilted exports.
 

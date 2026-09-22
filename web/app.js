@@ -17,7 +17,7 @@ import { PROP } from './prop.js';
 import { findWallPatches } from './planes.js';
 import { drawnWall } from './draw.js';
 import { writeBinarySTL, download } from './stl.js';
-import { writeThreeMF } from './threemf.js';
+import { writeThreeMF, readThreeMF } from './threemf.js';
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
@@ -133,6 +133,7 @@ const partMaterial = new THREE.MeshStandardMaterial({
 let part = null;
 let partName = '';
 let topology = null;      // welded adjacency, rebuilt only when the mesh changes
+let importNote = '';      // what the 3MF reader had to decide (merge, unit, skips)
 let weldMs = 0;
 let analysisTiming = '';
 let lastSize = null;
@@ -441,6 +442,9 @@ function report(filename, size) {
 
   lastSize = size;
   updateFit();
+
+  // Empty string hides it: `.note:empty { display: none }`, same as the sibling notes.
+  el('s-import-note').textContent = importNote;
 
   el('stats').hidden = false;
   el('status').hidden = false;
@@ -1770,7 +1774,7 @@ function buildExportGeometry() {
   // whichever walls the live mode contributes -- hand-drawn in Draw, suggested
   // in Suggest -- plus the pad, all already in print space
   const finTris = [...activeAdded()];
-  const base = partName.replace(/\.stl$/i, '') || 'part';
+  const base = partName.replace(/\.(stl|3mf)$/i, '') || 'part';
   return { partTris, finTris, base };
 }
 
@@ -2359,27 +2363,61 @@ for (const inp of customInputs) {
 
 const loader = new STLLoader();
 
-function loadFile(file) {
+/**
+ * Sniff the format from the CONTENT, not the extension. A 3MF is an OPC package,
+ * so it opens with the ZIP magic; an STL never does. Going by bytes means a file
+ * saved as .stl by a slicer that actually wrote a 3MF (it happens), or a .3mf the
+ * user renamed, still lands in the right parser.
+ */
+function isZip(buffer) {
+  if (buffer.byteLength < 4) return false;
+  const b = new Uint8Array(buffer, 0, 4);
+  return b[0] === 0x50 && b[1] === 0x4b && b[2] === 0x03 && b[3] === 0x04;
+}
+
+/**
+ * Bytes in, three.js geometry out, for either format. The 3MF reader hands back
+ * the same flat position array STLLoader produces, in millimetres, so everything
+ * downstream (setPart, the weld, the whole engine) is unchanged.
+ */
+async function parseModel(buffer) {
+  importNote = '';
+  if (!isZip(buffer)) return loader.parse(buffer);
+
+  const { positions, unit, meshes, skipped } = await readThreeMF(new Uint8Array(buffer));
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+  // Tell the user what we had to decide for them. A 3MF plate can hold several
+  // objects and this tool fins ONE part, so a multi-object plate is merged --
+  // silently swallowing that would leave them wondering why the fins straddle
+  // two bodies. Same for support bodies an earlier slicer session left in.
+  const notes = [];
+  if (meshes > 1) notes.push(`merged ${meshes} bodies from this 3MF into one part`);
+  if (skipped) notes.push(`ignored ${skipped} support/non-printable ${skipped === 1 ? 'body' : 'bodies'}`);
+  if (unit && unit !== 'millimeter') notes.push(`converted from ${unit} to mm`);
+  importNote = notes.length ? `3MF: ${notes.join('; ')}.` : '';
+
+  return geometry;
+}
+
+async function loadFile(file) {
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      setPart(loader.parse(reader.result), file.name);
-    } catch (err) {
-      console.error(err);
-      alert(`Could not read ${file.name}:\n${err.message}`);
-    }
-  };
-  reader.readAsArrayBuffer(file);
+  try {
+    setPart(await parseModel(await file.arrayBuffer()), file.name);
+  } catch (err) {
+    console.error(err);
+    alert(`Could not read ${file.name}:\n${err.message}`);
+  }
 }
 
 el('file').addEventListener('change', (e) => loadFile(e.target.files[0]));
 
-/** Load an STL that is already on the web (the sample model, a demo link). */
+/** Load a model that is already on the web (the sample model, a demo link). */
 async function loadURL(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  setPart(loader.parse(await res.arrayBuffer()), url.split('/').pop());
+  setPart(await parseModel(await res.arrayBuffer()), url.split('/').pop());
   // Drop ?stl= once it has been consumed: the path is nobody's business but the
   // user's, and a stale one in the address bar is misleading after they open a
   // different file.

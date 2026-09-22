@@ -45,5 +45,28 @@ no DOM), so a change to a verdict or a solver can't silently drift:
 - **`suggestStrengthPose`** lays an axial pull into the layer plane on a *seated*
   pose (never the needle-tower), and declines to turn an already in-plane load.
 
+**`threemf.test.js`** -- the 3MF container, both directions (the only tests here
+that aren't fin geometry, because the file format is equally part of the product):
+- our own export **round-trips** back to the same geometry, both bodies intact
+  through the `<components>` assembly;
+- the declared **unit** is honoured (inch/cm/m/micron -> mm) -- 3MF states its
+  units, and ignoring that is the "imported at 1/25 scale" bug on the way IN;
+- `<build><item>` and `<component>` **transforms compose** -- a reader that keeps
+  only one imports the part offset from the plate;
+- **DEFLATE** entries read, which matters because every real exporter compresses
+  and our writer only ever emits STORE, so the round-trip test alone would miss it;
+- **ZIP64** archives read, in both the "sizes and offset overflowed" and
+  "offset only" shapes (the ZIP64 extra field holds only the fields that actually
+  overflowed, in a fixed order, so a reader that assumes all three mis-parses the
+  second). This one shipped broken: ZIP64 was refused outright on the assumption
+  that no 3MF would use it, and a real user file did -- writers enable it for
+  reasons of their own, not only past the 4GB limit. Unresolvable placeholders
+  still fail loudly;
+- **support/non-printable bodies** stay out of the part geometry (leftover support
+  in a plate would otherwise poison the overhang analysis);
+- a broken file **fails loudly**: a triangle indexing a missing vertex drops that
+  face alone (dropping a partial one would shear the rest of the mesh), and a
+  non-ZIP or mesh-free package throws rather than opening blank.
+
 See `docs/FIN-SPEC.md` for the spec these encode. `prototype/stress/run.js` is the
 broader sweep (all models × poses) for eyeballing; this suite is the pass/fail gate.
