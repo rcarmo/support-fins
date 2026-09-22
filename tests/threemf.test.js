@@ -14,7 +14,7 @@ import { test } from 'bun:test';
 import { WEB, assert, assertClose, block } from './_util.js';
 
 const { writeThreeMF, readThreeMF } = await import(`${WEB}threemf.js`);
-const { zipStore } = await import(`${WEB}zip.js`);
+const { zipStore, unzip } = await import(`${WEB}zip.js`);
 
 const REL = 'http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel';
 
@@ -67,6 +67,13 @@ async function pack(xml) {
 
 const readXML = async (opts) => readThreeMF(await pack(modelXML(opts)));
 
+async function exportedModelXML(blob) {
+  const files = await unzip(new Uint8Array(await blob.arrayBuffer()));
+  const model = files.get('3D/3dmodel.model');
+  assert(model, 'exported 3MF has no 3D/3dmodel.model part');
+  return new TextDecoder().decode(model);
+}
+
 // --- the round trip --------------------------------------------------------
 
 test('3MF round trip: our own export reads back as the same geometry', async () => {
@@ -82,6 +89,26 @@ test('3MF round trip: our own export reads back as the same geometry', async () 
   const { lo, hi } = bounds(r.positions);
   assert(lo.every((v) => v === 0), `min ${lo}, want 0,0,0`);
   assert(hi[0] === 1 && hi[1] === 1 && hi[2] === 2, `max ${hi}, want 1,1,2`);
+});
+
+// The writer cannot force every slicer to expose bodies the same way, but it can
+// emit distinct named mesh objects so Orca/Bambu/Prusa have useful labels to keep.
+test('3MF export names part, fins and pad as separate mesh objects', async () => {
+  const fins = CUBE.map((p) => [p[0], p[1], p[2] + 1]);
+  const pad = CUBE.map((p) => [p[0], p[1], p[2] - 1]);
+  const xml = await exportedModelXML(writeThreeMF(CUBE, fins, 'name <&> test', {
+    padTris: pad,
+    partName: 'Part <body>',
+    finName: 'Breakaway "fins"',
+    padName: 'Bed & pad',
+  }));
+
+  assert(xml.includes('name="Part &lt;body&gt;"'), 'part object name is escaped and present');
+  assert(xml.includes('name="Breakaway &quot;fins&quot;"'), 'fin object name is escaped and present');
+  assert(xml.includes('name="Bed &amp; pad"'), 'pad object name is escaped and present');
+  assert(xml.includes('<component objectid="1"/><component objectid="2"/><component objectid="3"/>'),
+    'assembly references separate part/fins/pad objects');
+  assert(xml.includes('<build><item objectid="4"/></build>'), 'build points at the assembly object');
 });
 
 // --- units -----------------------------------------------------------------

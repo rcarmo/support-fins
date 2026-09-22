@@ -1804,11 +1804,15 @@ function buildExportGeometry() {
       ];
     }
   }
-  // whichever walls the live mode contributes -- hand-drawn in Draw, suggested
-  // in Suggest -- plus the pad, all already in print space
-  const finTris = [...activeAdded()];
+  // whichever support walls the live mode contributes -- hand-drawn in Draw,
+  // suggested in Suggest -- are already in print space. Keep the bed pad separate
+  // for 3MF so slicers that preserve object names show Part / Support fins / Bed pad.
+  const autoTris = finMode === 'draw' ? [] : finTris;
+  const drawn = drawShown() ? drawnTris : [];
+  const supportTris = [...autoTris, ...drawn];
+  const supportAndPadTris = [...supportTris, ...padTris];
   const base = partName.replace(/\.(stl|3mf)$/i, '') || 'part';
-  return { partTris, finTris, base };
+  return { partTris, supportTris, padTris: [...padTris], supportAndPadTris, base };
 }
 
 /**
@@ -1820,7 +1824,7 @@ function buildExportGeometry() {
 el('export').addEventListener('click', () => {
   const g = buildExportGeometry();
   if (!g) return;
-  download(writeBinarySTL([...g.partTris, ...g.finTris], g.base), `${g.base}-fins.stl`);
+  download(writeBinarySTL([...g.partTris, ...g.supportAndPadTris], g.base), `${g.base}-fins.stl`);
 });
 
 el('export-part').addEventListener('click', () => {
@@ -1836,7 +1840,7 @@ el('export-part-3mf').addEventListener('click', () => {
 });
 
 function hasExportedSupports(g) {
-  if (g?.finTris?.length) return true;
+  if (g?.supportAndPadTris?.length) return true;
   alert('There are no generated fins or bed pad to export. Turn on Add fins first.');
   return false;
 }
@@ -1844,7 +1848,7 @@ function hasExportedSupports(g) {
 el('export-supports').addEventListener('click', () => {
   const g = buildExportGeometry();
   if (!hasExportedSupports(g)) return;
-  download(writeBinarySTL(g.finTris, `${g.base}-supports`), `${g.base}-supports.stl`);
+  download(writeBinarySTL(g.supportAndPadTris, `${g.base}-supports`), `${g.base}-supports.stl`);
 });
 
 // 3MF keeps the fins as a separate object and states millimeters, so the file
@@ -1853,13 +1857,13 @@ el('export-supports').addEventListener('click', () => {
 el('export-3mf').addEventListener('click', () => {
   const g = buildExportGeometry();
   if (!g) return;
-  download(writeThreeMF(g.partTris, g.finTris, g.base), `${g.base}-fins.3mf`);
+  download(writeThreeMF(g.partTris, g.supportTris, g.base, { padTris: g.padTris }), `${g.base}-fins.3mf`);
 });
 
 el('export-supports-3mf').addEventListener('click', () => {
   const g = buildExportGeometry();
   if (!hasExportedSupports(g)) return;
-  download(writeThreeMF(g.finTris, [], `${g.base}-supports`), `${g.base}-supports.3mf`);
+  download(writeThreeMF(g.supportTris, [], `${g.base}-supports`, { partName: 'Support fins', padTris: g.padTris }), `${g.base}-supports.3mf`);
 });
 
 // ------------------------------------------------------------- undo / redo

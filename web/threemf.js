@@ -78,21 +78,36 @@ function meshXML(tris) {
   return `<mesh><vertices>${v.join('')}</vertices><triangles>${f.join('')}</triangles></mesh>`;
 }
 
-function modelXML(partTris, finTris, title) {
-  const objects = [`<object id="1" type="model">${meshXML(partTris)}</object>`];
+function xmlAttr(s) {
+  return String(s).replace(/[<>&\"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '\"': '&quot;' }[c]));
+}
+
+function modelXML(partTris, finTris, title, opts = {}) {
+  const padTris = opts.padTris ?? [];
+  const objects = [`<object id="1" type="model" name="${xmlAttr(opts.partName ?? 'Part')}">${meshXML(partTris)}</object>`];
+  const components = ['<component objectid="1"/>'];
+  let nextId = 2;
   let buildId = 1;
 
   if (finTris && finTris.length) {
-    objects.push(`<object id="2" type="model">${meshXML(finTris)}</object>`);
-    // An assembly object so the part and fins import as one locked unit while
-    // remaining two distinct meshes.
-    objects.push(
-      '<object id="3" type="model"><components>' +
-      '<component objectid="1"/><component objectid="2"/></components></object>');
-    buildId = 3;
+    objects.push(`<object id="${nextId}" type="model" name="${xmlAttr(opts.finName ?? 'Support fins')}">${meshXML(finTris)}</object>`);
+    components.push(`<component objectid="${nextId}"/>`);
+    nextId++;
+  }
+  if (padTris && padTris.length) {
+    objects.push(`<object id="${nextId}" type="model" name="${xmlAttr(opts.padName ?? 'Bed pad')}">${meshXML(padTris)}</object>`);
+    components.push(`<component objectid="${nextId}"/>`);
+    nextId++;
   }
 
-  const safeTitle = String(title).replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+  if (components.length > 1) {
+    // An assembly object so the part, fins and optional pad import as one locked
+    // unit while remaining distinct named meshes in slicers that preserve names.
+    objects.push(`<object id="${nextId}" type="model"><components>${components.join('')}</components></object>`);
+    buildId = nextId;
+  }
+
+  const safeTitle = xmlAttr(title);
   return '<?xml version="1.0" encoding="UTF-8"?>\n' +
     `<model unit="millimeter" xml:lang="en-US" xmlns="${NS_CORE}">` +
     '<metadata name="Application">Support Fins</metadata>' +
@@ -116,11 +131,11 @@ const ROOT_RELS = '<?xml version="1.0" encoding="UTF-8"?>\n' +
  * @param name      written as the model Title
  * @returns Blob    a .3mf package
  */
-export function writeThreeMF(partTris, finTris, name = 'Support Fins') {
+export function writeThreeMF(partTris, finTris, name = 'Support Fins', opts = {}) {
   return zipStore([
     { name: '[Content_Types].xml', data: CONTENT_TYPES },
     { name: '_rels/.rels', data: ROOT_RELS },
-    { name: '3D/3dmodel.model', data: modelXML(partTris, finTris, name) },
+    { name: '3D/3dmodel.model', data: modelXML(partTris, finTris, name, opts) },
   ]);
 }
 
