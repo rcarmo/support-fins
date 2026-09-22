@@ -1396,23 +1396,32 @@ function setFinNote(lead, detail) {
   else { info.title = ''; info.hidden = true; }
 }
 
-function supportAuditText(built) {
-  if (!built || !lastResult) return '';
+function supportAudit(built) {
+  if (!built || !lastResult) return { visible: '', detail: '', warn: false };
   const total = lastResult.regions.length;
   const unserved = Math.max(0, built.unserved ?? 0);
   const served = Math.max(0, total - unserved);
-  const bits = [`Support audit: ${served}/${total} overhang region${total === 1 ? '' : 's'} served`];
-  if (unserved) bits.push(`${unserved} left uncovered in this orientation`);
-  if (built.skipped) {
-    const skipped = Object.entries(built.skipped)
-      .filter(([, n]) => n)
-      .map(([k, n]) => `${n} ${k}`);
-    if (skipped.length) bits.push(`skipped ${skipped.join(', ')}`);
-  }
-  if (removedIds.size) bits.push(`${removedIds.size} generated support${removedIds.size === 1 ? '' : 's'} removed by user`);
+  const skipped = built.skipped
+    ? Object.entries(built.skipped).filter(([, n]) => n).map(([k, n]) => `${n} ${k}`)
+    : [];
+  const removed = removedIds.size;
   const added = activeAdded().length;
+  const visible = total
+    ? `Audit: ${served}/${total} overhang region${total === 1 ? '' : 's'} served`
+      + (unserved ? ` · ${unserved} uncovered` : '')
+      + (removed ? ` · ${removed} removed` : '')
+    : (added ? 'Audit: no overhang regions; supports are user/seat additions' : '');
+  const bits = [];
+  if (visible) bits.push(visible.replace(/^Audit:/, 'Support audit:'));
+  if (skipped.length) bits.push(`skipped ${skipped.join(', ')}`);
   if (added) bits.push(`${added} support triangle${added === 1 ? '' : 's'} in current export`);
-  return `${bits.join('; ')}.`;
+  return { visible, detail: bits.length ? `${bits.join('; ')}.` : '', warn: unserved > 0 || skipped.length > 0 };
+}
+
+function setSupportAudit(audit) {
+  const box = el('s-audit');
+  box.textContent = audit?.visible ?? '';
+  box.classList.toggle('warn', !!audit?.warn);
 }
 
 /**
@@ -1458,6 +1467,7 @@ function updateDrawReadout(built, ms) {
       ? 'this part balances on one point, so the bed pad is holding it. Print with the pad on'
       : 'this part balances on one point. Turn the bed pad on to seat it, or rotate until it sits down');
   }
+  setSupportAudit(supportAudit(built));
   setFinNote(lead, help);
   if (ms != null) el('s-time').textContent = `${analysisTiming} · pad ${ms.toFixed(0)} ms`;
 }
@@ -1470,6 +1480,7 @@ function updateFinReadout(built, ms) {
     box.textContent = '—';
     box.classList.remove('warn');
     el('s-pad').textContent = '—';
+    setSupportAudit(null);
     setFinNote([], []);
     return;
   }
@@ -1578,8 +1589,9 @@ function updateFinReadout(built, ms) {
             + `${b === 1 ? 'it' : 'them'} alone, so turn the hole upward to print `
             + `${b === 1 ? 'it' : 'them'} clean.`);
   }
-  const audit = supportAuditText(built);
-  if (audit) help.push(audit);
+  const audit = supportAudit(built);
+  setSupportAudit(audit);
+  if (audit.detail) help.push(audit.detail);
   setFinNote(lead, help);
   // ms is absent when a hand-drawn wall (Suggest + Draw mix) re-runs the readout
   // without rebuilding the auto fins -- don't touch the timing line then, and

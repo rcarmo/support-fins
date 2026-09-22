@@ -275,6 +275,23 @@ html, body {
 .note:empty { display: none; }
 .note.good { color: #6fcf8b; }   /* the "you don't need me" all-clear */
 
+.support-audit {
+  max-width: 26ch;
+  margin: 0;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--panel) 78%, transparent);
+  color: var(--dim);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.support-audit:empty { display: none; }
+.support-audit.warn {
+  border-color: rgba(255,180,84,.35);
+  color: #f2cfa0;
+}
+
 /* The receipt: the "what did this get me" payoff. The exact grams are the
    headline; the saving is the reason to bother. Set apart from the plain stats
    so the number reads as a result, not another row. */
