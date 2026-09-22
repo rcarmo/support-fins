@@ -108,12 +108,11 @@ python3 prototype/spike_orient.py yourpart.stl         # rank orientations
 python3 prototype/spike_arrow.py yourpart.stl 0,0,-1   # load-direction scoring
 ```
 
-Tests (Bun for the JS engine):
+Tests and profiling (Bun for the JS engine):
 
 ```bash
 bun run test
-# or directly:
-bun test tests/
+bun run profile prototype/stress/models/plate.stl 0 auto
 ```
 
 The repository intentionally does not carry slicer plugin code. OrcaSlicer integration is

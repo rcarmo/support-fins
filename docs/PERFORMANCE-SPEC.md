@@ -144,3 +144,17 @@ and load via `?stl=dev-models/x.stl` in the browser.)
   tried and **reverted** — it cut `insidePart` calls but `nearestPart` cost the
   same, so it was a wash (the loop *iteration* overhead, not the primitive, is the
   cost — which is why strategies 2–5 target iteration count, not the primitive).
+
+## Local Bun profiling harness
+
+Use the checked-in Bun profiler before optimizing geometry code:
+
+```bash
+bun run profile prototype/stress/models/plate.stl 0 auto
+bun run profile prototype/stress/models/lbracket.stl 40 auto
+```
+
+It prints JSON with topology size, overhang counts, analyze/build timing, support counts,
+tines, skipped reasons, and triangle counts. Treat it as a first attribution pass only;
+for inner-loop optimization, add narrower instrumentation around the suspected function and
+keep `bun test tests/` green.
