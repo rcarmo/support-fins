@@ -1821,6 +1821,11 @@ export function buildSquatBed(line, regionTris, topo, rot, offset, out) {
       span, height: top - zBed, stations: settled.length, volume: Math.abs(vol),
       squat: true,
       line: settled.map((p) => [p[0], p[1], p[2] - PROP.gap]),
+      // Triangle range of THIS wall in the caller's `out`. The caller emits the
+      // tines separately (after every squat wall), so a fin's full geometry is
+      // [this wall range] + [its tines range] -- two non-contiguous segments,
+      // tracked as `triRanges` at the push site.
+      triRange: [before, out.length],
     });
   }
   return placed;
@@ -1889,6 +1894,11 @@ export function buildProps(topo, result, rot, opts = {}) {
 
   const out = [];
   const props = [];
+  // Per-fin identity, assigned in build order. The id is only used to map a
+  // raycast hit back to its fin WITHIN one build (the UI tracks removals across
+  // rebuilds by a spatial signature, not this id). Sequential keeps it stable
+  // within a generation.
+  let nextId = 0;
   const skipped = { noLine: 0, wanders: 0, stub: 0, blocked: 0,
                     degenerate: 0, buried: 0, weld: 0, sliver: 0, bore: 0 };
   const v = [0, 0, 0];
@@ -2019,6 +2029,7 @@ export function buildProps(topo, result, rot, opts = {}) {
       // bore, or side walls in the way) it says `floored` -- counted and skipped,
       // never stilted through the part or scarred into a bore. Works on a COPY so
       // the plate path's own `line` is untouched.
+      const tri0 = out.length;
       const pa = buildPartAttached(line, partTris, topo, rot, off, out);
       if (pa.ok) {
         servedRegions.add(patch.region);
@@ -2028,8 +2039,12 @@ export function buildProps(topo, result, rot, opts = {}) {
           const topLine = pa.prop.line.map((p) => [p[0], p[1], p[2] + PROP.gap]);
           tineTotal += emitTines(topLine, partTris, topo, rot, off, out, tineStepEff, undefined, tineHeight);
         }
+        // buildPartAttached pushed the wall starting at tri0; emitTines above pushed
+        // its tines right after, so wall + tines are contiguous -> one segment.
         props.push({ ...pa.prop, area: patch.area,
-                     trimmed: line.length - pa.prop.stations });
+                     trimmed: line.length - pa.prop.stations,
+                     id: nextId++, kind: 'prop',
+                     triRanges: [[tri0, out.length]] });
         continue;
       }
       if (pa.floored) { skipped.bore++; continue; }
@@ -2049,11 +2064,17 @@ export function buildProps(topo, result, rot, opts = {}) {
       for (const sq of buildSquatBed(line, regionTris, topo, rot, off, out)) {
         // a squat wall's base is the thin brim, not the tall flange, so tines
         // attach from squatBrimH up (the default minTop would skip every one).
+        const t0 = out.length;
         if (withTines) tineTotal += emitTines(
           sq.line.map((p) => [p[0], p[1], p[2] + PROP.gap]),
           regionTris, topo, rot, off, out, tineStepEff, PROP.squatBrimH, tineHeight);
         servedRegions.add(patch.region);
-        props.push({ ...sq, area: patch.area });
+        // buildSquatBed pushed this wall (sq.triRange) BEFORE every squat wall's
+        // tines, so a fin's wall and its tines are NON-contiguous in `out` --
+        // track both segments so removing the fin takes wall AND tines together.
+        const segs = [sq.triRange];
+        if (out.length > t0) segs.push([t0, out.length]);
+        props.push({ ...sq, area: patch.area, id: nextId++, kind: 'prop', triRanges: segs });
       }
 
       // A track is straight in XY by construction, so this gate is a tripwire
@@ -2159,6 +2180,11 @@ export function buildProps(topo, result, rot, opts = {}) {
           volume: Math.abs(vol),
           // the centreline, so a coverage check can ask what this wall reaches
           line: settled.map((p) => [p[0], p[1], p[2] - PROP.gap]),
+          id: nextId++, kind: 'prop',
+          // `before` (captured above the weld-retry loop) starts the wall;
+          // emitTines just pushed its tines right after, so wall + tines are one
+          // contiguous segment.
+          triRanges: [[before, out.length]],
         });
         placed = true;
       }
