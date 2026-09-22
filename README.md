@@ -64,6 +64,11 @@ print settings with ours on load, and it would have to be re-authored per slicer
 per slicer version — a worse trade than a one-time, benign notice on a file whose
 geometry is already right. See `web/threemf.js` for the writer.
 
+3MF import is mesh-first too: printable triangle geometry is loaded, slicer settings
+and non-printable/support bodies are ignored, and embedded CAD/STEP payloads are reported
+but not converted. If a 3MF contains only CAD/STEP data, tessellate/export it to STL or
+mesh 3MF before opening it here.
+
 ## Run it locally
 
 The web app is vanilla ES modules — no build step. Serve it with the included dev server

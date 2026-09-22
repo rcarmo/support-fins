@@ -254,6 +254,13 @@ function compose(a, b) {
  * `solidsupport` are kept; a missing type means `model` per the spec.
  */
 const SKIP_TYPES = new Set(['support', 'surface', 'other']);
+const CAD_PAYLOAD_RE = /(^|[/\\])[^/\\]+\.(step|stp|stpz|iges|igs|brep|sat)$/i;
+
+function cadPayloads(parts) {
+  const names = [];
+  for (const name of parts.keys()) if (CAD_PAYLOAD_RE.test(name)) names.push(name);
+  return names;
+}
 
 /** Parse 3D/3dmodel.model into { objects, items, unit }. */
 function parseModelXML(xml) {
@@ -352,6 +359,7 @@ function emitObject(objects, id, m, out, seen, stats) {
  */
 export async function readThreeMF(bytes) {
   const parts = await unzip(bytes);
+  const cad = cadPayloads(parts);
 
   // The root relationship names the model part, but every writer in practice
   // uses the conventional path; fall back to any *.model in the package before
@@ -370,7 +378,10 @@ export async function readThreeMF(bytes) {
   if (!modelPart) {
     for (const [name, data] of parts) if (name.toLowerCase().endsWith('.model')) { modelPart = data; break; }
   }
-  if (!modelPart) throw new Error('no 3D model part found in this 3MF');
+  if (!modelPart) {
+    if (cad.length) throw new Error('this 3MF contains CAD/STEP payloads but no printable mesh geometry; export or tessellate it to STL or mesh 3MF first');
+    throw new Error('no 3D model part found in this 3MF');
+  }
 
   const xml = new TextDecoder().decode(modelPart);
   const { objects, items, unit } = parseModelXML(xml);
@@ -388,7 +399,10 @@ export async function readThreeMF(bytes) {
 
   for (const item of roots) emitObject(objects, item.objectid, item.transform, out, new Set(), stats);
 
-  if (!out.length) throw new Error('this 3MF contains no printable mesh geometry');
+  if (!out.length) {
+    if (cad.length) throw new Error('this 3MF contains CAD/STEP payloads but no printable mesh geometry; export or tessellate it to STL or mesh 3MF first');
+    throw new Error('this 3MF contains no printable mesh geometry');
+  }
 
   const positions = new Float32Array(out.length);
   for (let i = 0; i < out.length; i++) positions[i] = out[i] * scale;
@@ -399,5 +413,6 @@ export async function readThreeMF(bytes) {
     items: roots.length,
     skipped: stats.skipped,
     dropped: stats.dropped,
+    cadPayloads: cad,
   };
 }

@@ -1,3 +1,4 @@
+import { test } from 'bun:test';
 // The 3MF import/export round trip. These pin the things that separate "opens
 // our own export" from "opens the file a stranger exported from Fusion":
 //   - our writer's output reads back as the same geometry (a real round trip);
@@ -68,7 +69,7 @@ const readXML = async (opts) => readThreeMF(await pack(modelXML(opts)));
 
 // --- the round trip --------------------------------------------------------
 
-Deno.test('3MF round trip: our own export reads back as the same geometry', async () => {
+test('3MF round trip: our own export reads back as the same geometry', async () => {
   const fins = CUBE.map((p) => [p[0], p[1], p[2] + 1]);   // a second body on top
   const blob = writeThreeMF(CUBE, fins, 'test part');
   const r = await readThreeMF(new Uint8Array(await blob.arrayBuffer()));
@@ -88,7 +89,7 @@ Deno.test('3MF round trip: our own export reads back as the same geometry', asyn
 // STL is unitless and 3MF is not; ignoring the attribute is the "imported at
 // 1/25 scale" bug arriving through the front door instead of the back.
 for (const [unit, mm] of [['inch', 25.4], ['centimeter', 10], ['meter', 1000], ['micron', 0.001]]) {
-  Deno.test(`3MF unit ${unit} is converted to mm`, async () => {
+  test(`3MF unit ${unit} is converted to mm`, async () => {
     const r = await readXML({ unit });
     assertClose(bounds(r.positions).hi[0], mm, 1e-3, `${unit} edge`);
   });
@@ -96,14 +97,14 @@ for (const [unit, mm] of [['inch', 25.4], ['centimeter', 10], ['meter', 1000], [
 
 // --- transforms ------------------------------------------------------------
 
-Deno.test('3MF build-item transform is applied', async () => {
+test('3MF build-item transform is applied', async () => {
   // Row-major, translation last: scale x2 in X, move +10 in X.
   const r = await readXML({ build: '<item objectid="1" transform="2 0 0 0 1 0 0 0 1 10 0 0"/>' });
   const { lo, hi } = bounds(r.positions);
   assert(lo[0] === 10 && hi[0] === 12, `x ${lo[0]}..${hi[0]}, want 10..12`);
 });
 
-Deno.test('3MF component and item transforms compose', async () => {
+test('3MF component and item transforms compose', async () => {
   const r = await readXML({
     extraObjects: '<object id="2" type="model"><components>'
       + '<component objectid="1" transform="1 0 0 0 1 0 0 0 1 0 0 5"/></components></object>',
@@ -115,7 +116,7 @@ Deno.test('3MF component and item transforms compose', async () => {
 
 // --- real-world containers -------------------------------------------------
 
-Deno.test('3MF with DEFLATE entries reads (every real exporter compresses)', async () => {
+test('3MF with DEFLATE entries reads (every real exporter compresses)', async () => {
   // Compress with the same platform primitive the reader inflates with, so this
   // exercises method 8 rather than our own STORE path.
   const xml = new TextEncoder().encode(modelXML());
@@ -271,13 +272,13 @@ async function zip64Package(xml, { placeholdSizes = true } = {}) {
 // reaches for ZIP64, so the size of the archive says nothing about whether the
 // markers are there.
 for (const placeholdSizes of [true, false]) {
-  Deno.test(`a ZIP64 3MF reads (${placeholdSizes ? 'sizes + offset' : 'offset only'} overflowed)`, async () => {
+  test(`a ZIP64 3MF reads (${placeholdSizes ? 'sizes + offset' : 'offset only'} overflowed)`, async () => {
     const r = await readThreeMF(await zip64Package(modelXML(), { placeholdSizes }));
     assert(r.positions.length === 9, `ZIP64 read gave ${r.positions.length / 9} tris, want 1`);
   });
 }
 
-Deno.test('ZIP64 placeholders with no ZIP64 record are reported as corrupt', async () => {
+test('ZIP64 placeholders with no ZIP64 record are reported as corrupt', async () => {
   // Truncating the ZIP64 record away leaves the placeholders unresolvable;
   // walking those offsets would read garbage, so this must fail loudly.
   const good = await zip64Package(modelXML());
@@ -288,7 +289,7 @@ Deno.test('ZIP64 placeholders with no ZIP64 record are reported as corrupt', asy
   assert(threw, 'unresolvable ZIP64 placeholders should throw');
 });
 
-Deno.test('3MF support bodies stay out of the part geometry', async () => {
+test('3MF support bodies stay out of the part geometry', async () => {
   // A plate carrying leftover support from an earlier slicer session: pulling it
   // in as part geometry would poison the overhang analysis.
   const r = await readXML({
@@ -301,7 +302,21 @@ Deno.test('3MF support bodies stay out of the part geometry', async () => {
   assert(bounds(r.positions).hi[0] === 1, `support geometry leaked in (max x ${bounds(r.positions).hi[0]})`);
 });
 
-Deno.test('3MF with no <build> falls back to the mesh objects', async () => {
+test('3MF mesh import reports embedded CAD/STEP payloads but keeps the mesh path', async () => {
+  const bytes = zipStore([
+    { name: '[Content_Types].xml', data: '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>' },
+    { name: '_rels/.rels', data: '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        + `<Relationship Id="r" Target="/3D/3dmodel.model" Type="${REL}"/></Relationships>` },
+    { name: '3D/3dmodel.model', data: modelXML() },
+    { name: 'Metadata/source.step', data: 'ISO-10303-21; END-ISO-10303-21;' },
+  ]);
+  const r = await readThreeMF(new Uint8Array(await bytes.arrayBuffer()));
+  assert(r.positions.length === 9, `mesh+STEP read gave ${r.positions.length / 9} tris, want 1`);
+  assert(r.cadPayloads.length === 1 && r.cadPayloads[0] === 'Metadata/source.step',
+    `CAD payloads ${r.cadPayloads}, want Metadata/source.step`);
+});
+
+test('3MF with no <build> falls back to the mesh objects', async () => {
   // A few CAD exporters omit the build section; refusing a file that plainly
   // contains a mesh would be obtuse.
   const r = await readXML({ build: '' });
@@ -310,7 +325,7 @@ Deno.test('3MF with no <build> falls back to the mesh objects', async () => {
 
 // --- failing loudly --------------------------------------------------------
 
-Deno.test('a triangle indexing a missing vertex drops that face only', async () => {
+test('a triangle indexing a missing vertex drops that face only', async () => {
   // Dropping a partial face instead would shift every later vertex by one and
   // shear the rest of the mesh -- worse than a hole, because it still renders.
   const xml = modelXML().replace(
@@ -321,16 +336,26 @@ Deno.test('a triangle indexing a missing vertex drops that face only', async () 
   assert(r.positions.length === 9, `kept ${r.positions.length / 9} tris, want the 1 good one`);
 });
 
-Deno.test('a non-ZIP file is rejected, not read as an empty part', async () => {
+test('a non-ZIP file is rejected, not read as an empty part', async () => {
   let threw = false;
   try { await readThreeMF(new Uint8Array([1, 2, 3, 4, 5])); } catch { threw = true; }
   assert(threw, 'reading a non-ZIP should throw');
 });
 
-Deno.test('a 3MF with no mesh anywhere is rejected', async () => {
+test('a 3MF with no mesh anywhere is rejected', async () => {
   let threw = false;
   try {
     await readThreeMF(await pack('<?xml version="1.0"?><model unit="millimeter"><resources/><build/></model>'));
   } catch { threw = true; }
   assert(threw, 'a geometry-free 3MF should throw rather than open blank');
+});
+
+test('a 3MF with only embedded CAD/STEP payloads is rejected with a useful message', async () => {
+  const bytes = zipStore([
+    { name: '[Content_Types].xml', data: '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>' },
+    { name: '3D/source.step', data: 'ISO-10303-21; END-ISO-10303-21;' },
+  ]);
+  let msg = '';
+  try { await readThreeMF(new Uint8Array(await bytes.arrayBuffer())); } catch (err) { msg = String(err?.message || err); }
+  assert(msg.includes('CAD/STEP') && msg.includes('printable mesh'), `message "${msg}" should explain CAD/STEP mesh limitation`);
 });

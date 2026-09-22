@@ -2384,7 +2384,7 @@ async function parseModel(buffer) {
   importNote = '';
   if (!isZip(buffer)) return loader.parse(buffer);
 
-  const { positions, unit, meshes, skipped } = await readThreeMF(new Uint8Array(buffer));
+  const { positions, unit, meshes, skipped, cadPayloads = [] } = await readThreeMF(new Uint8Array(buffer));
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
@@ -2396,6 +2396,7 @@ async function parseModel(buffer) {
   if (meshes > 1) notes.push(`merged ${meshes} bodies from this 3MF into one part`);
   if (skipped) notes.push(`ignored ${skipped} support/non-printable ${skipped === 1 ? 'body' : 'bodies'}`);
   if (unit && unit !== 'millimeter') notes.push(`converted from ${unit} to mm`);
+  if (cadPayloads.length) notes.push(`ignored ${cadPayloads.length} embedded CAD/STEP ${cadPayloads.length === 1 ? 'payload' : 'payloads'}`);
   importNote = notes.length ? `3MF: ${notes.join('; ')}.` : '';
 
   return geometry;
