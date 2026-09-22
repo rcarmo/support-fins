@@ -29,7 +29,7 @@ now you had to CAD it by hand every time.
 3. It shows you live: overhang count, how many can take a real fin, height, bed contact.
    Point at the load direction, answer one question — *does it pull apart, or does it
    lever?* — and it scores orientations for strength too.
-4. Export. Fins and a bed pad come baked into the STL or 3MF, or export just the generated supports for inspection/manual workflows.
+4. Export. Fins and a bed pad come baked into the STL or 3MF, or export oriented part-only/support-only files for inspection/manual workflows.
 
 **Why you pick the rotation, not the software:** "stronger" means nothing without a load
 direction, and the geometry doesn't contain one. Turn a solver fully loose and it'll hand

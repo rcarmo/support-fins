@@ -1823,6 +1823,18 @@ el('export').addEventListener('click', () => {
   download(writeBinarySTL([...g.partTris, ...g.finTris], g.base), `${g.base}-fins.stl`);
 });
 
+el('export-part').addEventListener('click', () => {
+  const g = buildExportGeometry();
+  if (!g) return;
+  download(writeBinarySTL(g.partTris, `${g.base}-part`), `${g.base}-part.stl`);
+});
+
+el('export-part-3mf').addEventListener('click', () => {
+  const g = buildExportGeometry();
+  if (!g) return;
+  download(writeThreeMF(g.partTris, [], `${g.base}-part`), `${g.base}-part.3mf`);
+});
+
 function hasExportedSupports(g) {
   if (g?.finTris?.length) return true;
   alert('There are no generated fins or bed pad to export. Turn on Add fins first.');
