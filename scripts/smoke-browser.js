@@ -60,6 +60,12 @@ try {
   page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
 
   await page.goto(url, { waitUntil: 'domcontentloaded' });
+  await page.locator('#theme-toggle').click();
+  const lightTheme = await page.evaluate(() => document.documentElement.dataset.theme);
+  if (lightTheme !== 'light') throw new Error(`theme toggle did not switch to light, got ${lightTheme}`);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  const persistedTheme = await page.evaluate(() => document.documentElement.dataset.theme);
+  if (persistedTheme !== 'light') throw new Error(`theme preference did not persist, got ${persistedTheme}`);
   await page.locator('#file').setInputFiles(fixture);
   await page.locator('#stats').waitFor({ state: 'visible', timeout: 10000 });
   await page.locator('#fins-toggle').click();

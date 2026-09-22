@@ -37,9 +37,33 @@ const VOLUMES = [
 ];
 const DEFAULT_VOLUME = { x: 250, y: 220, z: 270 };
 const VOLUME_STORE = 'sf.volume';
+const THEME_STORE = 'sf.theme';
 const volLabel = (v) => `${v.x} × ${v.y} × ${v.z} mm`;
 
 const el = (id) => document.getElementById(id);
+
+function savedTheme() {
+  try {
+    const t = localStorage.getItem(THEME_STORE);
+    return t === 'light' || t === 'dark' ? t : 'dark';
+  } catch {
+    return 'dark';
+  }
+}
+let currentTheme = savedTheme();
+document.documentElement.dataset.theme = currentTheme;
+
+function cssColor(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function syncThemeButton() {
+  const b = el('theme-toggle');
+  if (!b) return;
+  b.textContent = currentTheme === 'light' ? 'Light' : 'Dark';
+  b.setAttribute('aria-pressed', String(currentTheme === 'dark'));
+  b.title = currentTheme === 'light' ? 'Switch to dark mode' : 'Switch to light mode';
+}
 
 // ---------------------------------------------------------------- scene setup
 
@@ -56,7 +80,18 @@ renderer.domElement.setAttribute(
 viewport.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x14161a);
+function syncSceneTheme() {
+  scene.background = new THREE.Color(cssColor('--scene-bg') || '#14161a');
+}
+syncThemeButton();
+syncSceneTheme();
+el('theme-toggle')?.addEventListener('click', () => {
+  currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+  document.documentElement.dataset.theme = currentTheme;
+  try { localStorage.setItem(THEME_STORE, currentTheme); } catch { /* private mode */ }
+  syncThemeButton();
+  syncSceneTheme();
+});
 
 const camera = new THREE.PerspectiveCamera(45, 1, 1, 5000);
 camera.up.set(0, 0, 1);
