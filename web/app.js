@@ -1790,6 +1790,18 @@ el('export').addEventListener('click', () => {
   download(writeBinarySTL([...g.partTris, ...g.finTris], g.base), `${g.base}-fins.stl`);
 });
 
+function hasExportedSupports(g) {
+  if (g?.finTris?.length) return true;
+  alert('There are no generated fins or bed pad to export. Turn on Add fins first.');
+  return false;
+}
+
+el('export-supports').addEventListener('click', () => {
+  const g = buildExportGeometry();
+  if (!hasExportedSupports(g)) return;
+  download(writeBinarySTL(g.finTris, `${g.base}-supports`), `${g.base}-supports.stl`);
+});
+
 // 3MF keeps the fins as a separate object and states millimeters, so the file
 // opens correctly oriented and support-free in Bambu Studio, OrcaSlicer, or
 // PrusaSlicer without a re-scale or a re-rotate.
@@ -1797,6 +1809,12 @@ el('export-3mf').addEventListener('click', () => {
   const g = buildExportGeometry();
   if (!g) return;
   download(writeThreeMF(g.partTris, g.finTris, g.base), `${g.base}-fins.3mf`);
+});
+
+el('export-supports-3mf').addEventListener('click', () => {
+  const g = buildExportGeometry();
+  if (!hasExportedSupports(g)) return;
+  download(writeThreeMF(g.finTris, [], `${g.base}-supports`), `${g.base}-supports.3mf`);
 });
 
 // ------------------------------------------------------------- undo / redo
