@@ -70,8 +70,15 @@ The web app is vanilla ES modules — no build step. Serve it with the included 
 (it disables caching so edits actually show up on reload):
 
 ```bash
-python3 dev-server.py            # http://localhost:8731/
+python3 dev-server.py                      # http://localhost:8731/
+python3 dev-server.py 8080                 # custom port
+python3 dev-server.py --host 0.0.0.0       # reach from other devices on the LAN
 ```
+
+By default the server binds to `127.0.0.1` (localhost only). Pass `--host 0.0.0.0`
+to expose it to the local network — handy on a headless box like a Raspberry Pi
+behind a firewall; the script prints the LAN address to open. The port is an
+optional positional argument and `--help` lists every option.
 
 Or run the same `web/` directory in Docker — nginx on the host's 8731, so the URL
 is identical to the dev server:
