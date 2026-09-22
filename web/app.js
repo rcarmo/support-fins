@@ -18,6 +18,7 @@ import { findWallPatches } from './planes.js';
 import { drawnWall } from './draw.js';
 import { writeBinarySTL, download } from './stl.js';
 import { writeThreeMF, readThreeMF } from './threemf.js';
+import { SHOW_PROMO_LINKS } from './config.js';
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
@@ -41,6 +42,32 @@ const THEME_STORE = 'sf.theme';
 const volLabel = (v) => `${v.x} × ${v.y} × ${v.z} mm`;
 
 const el = (id) => document.getElementById(id);
+
+function syncPromoLinks() {
+  if (!SHOW_PROMO_LINKS) return;
+  const topbar = el('topbar');
+  const badge = topbar?.querySelector('.badge');
+  if (topbar && badge) {
+    const link = document.createElement('a');
+    link.className = 'btn kofi';
+    link.dataset.promoLink = '';
+    link.href = 'https://ko-fi.com/matthewtrahan';
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.title = 'Support the upstream Support Fins project on Ko-fi.';
+    link.textContent = 'Support project';
+    badge.after(link);
+  }
+  const dropInner = document.querySelector('#drop .inner');
+  if (dropInner) {
+    const p = document.createElement('p');
+    p.className = 'kofi-line';
+    p.dataset.promoLink = '';
+    p.innerHTML = 'Free and open source. <a class="kofi" href="https://ko-fi.com/matthewtrahan" target="_blank" rel="noopener">Support the upstream project</a>.';
+    dropInner.appendChild(p);
+  }
+}
+syncPromoLinks();
 
 function savedTheme() {
   try {

@@ -66,6 +66,8 @@ try {
   await page.reload({ waitUntil: 'domcontentloaded' });
   const persistedTheme = await page.evaluate(() => document.documentElement.dataset.theme);
   if (persistedTheme !== 'light') throw new Error(`theme preference did not persist, got ${persistedTheme}`);
+  const visiblePromos = await page.locator('[data-promo-link]:visible').count();
+  if (visiblePromos !== 0) throw new Error(`promo links should be hidden by default, saw ${visiblePromos}`);
   await page.locator('#file').setInputFiles(fixture);
   await page.locator('#stats').waitFor({ state: 'visible', timeout: 10000 });
   await page.locator('#fins-toggle').click();
